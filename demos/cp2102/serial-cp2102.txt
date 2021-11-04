@@ -1,0 +1,4 @@
+5v - 5v
+GND - GND
+TX - RX
+RX - TX

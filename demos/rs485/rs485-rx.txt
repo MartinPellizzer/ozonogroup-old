@@ -1,0 +1,4 @@
+RO - SoftwareSerail RX 2
+RI - SoftwareSerail TX 3
+
+RE#/DE - GND
