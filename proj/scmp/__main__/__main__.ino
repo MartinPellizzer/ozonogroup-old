@@ -7,7 +7,6 @@ DateTime now;
 #include <SD.h>
 File file;
 
-uint32_t is_communicating_timer = 0;
 
 uint8_t history_update_screen = 0;
 
@@ -38,13 +37,13 @@ typedef struct history_t
 } history_t;
 history_t history = {};
 
-#define SENSOR_COMMUNICATION_TIMEOUT 5000
 typedef struct sensor_t
 {
   int16_t ppb;
   int16_t ppb_prev;
 
   int8_t is_communicating;
+  int8_t is_communicating_old;
   uint32_t is_communicating_timer;
 } sensor_t;
 sensor_t sensor1 = {};
@@ -67,7 +66,7 @@ typedef struct nextion_t
   uint8_t screen;
   uint8_t refresh;
   int8_t screen_history_refresh_clock;
-  int8_t screen_all_refresh_sensor_icon;
+  int8_t header_sensor_icon_refresh;
 
   int8_t history_page;
 
@@ -75,7 +74,6 @@ typedef struct nextion_t
 
 } nextion_t;
 nextion_t nextion = {};
-
 
 typedef struct rtc_t
 {
@@ -132,11 +130,23 @@ unsigned char get_checksum(unsigned char *i, unsigned char ln)
 }
 void sensor1_check_communication()
 {
-  if (millis() - is_communicating_timer >= SENSOR_COMMUNICATION_TIMEOUT)
+  if (millis() - sensor1.is_communicating_timer >= 5000)
   {
-    is_communicating_timer = millis();
     sensor1.is_communicating = 0;
-    nextion.screen_all_refresh_sensor_icon = 1;
+    if (sensor1.is_communicating_old != sensor1.is_communicating)
+    {
+      sensor1.is_communicating_old = sensor1.is_communicating;
+      nextion.header_sensor_icon_refresh = 1;
+    }
+  }
+  if (millis() - sensor2.is_communicating_timer >= 5000)
+  {
+    sensor2.is_communicating = 0;
+    if (sensor2.is_communicating_old != sensor2.is_communicating)
+    {
+      sensor2.is_communicating_old = sensor2.is_communicating;
+      nextion.header_sensor_icon_refresh = 1;
+    }
   }
 }
 void sensor1_read()
@@ -154,9 +164,14 @@ void sensor1_read()
         sensor1.ppb_prev = -1;
         ppb_avg = (sensor1.ppb + sensor2.ppb) / 2;
 
-        is_communicating_timer = millis();
+        sensor1.is_communicating_timer = millis();
         sensor1.is_communicating = 1;
-        nextion.screen_all_refresh_sensor_icon = 1;
+
+        if (sensor1.is_communicating_old != sensor1.is_communicating)
+        {
+          sensor1.is_communicating_old = sensor1.is_communicating;
+          nextion.header_sensor_icon_refresh = 1;
+        }
       }
     }
   }
@@ -176,9 +191,14 @@ void sensor2_read()
         sensor2.ppb_prev = -1;
         ppb_avg = (sensor1.ppb + sensor2.ppb) / 2;
 
-        is_communicating_timer = millis();
-        sensor1.is_communicating = 1;
-        nextion.screen_all_refresh_sensor_icon = 1;
+        sensor2.is_communicating_timer = millis();
+        sensor2.is_communicating = 1;
+
+        if (sensor2.is_communicating_old != sensor2.is_communicating)
+        {
+          sensor2.is_communicating_old = sensor2.is_communicating;
+          nextion.header_sensor_icon_refresh = 1;
+        }
       }
     }
   }
@@ -204,12 +224,14 @@ void nextion_screen_realtime_manager()
   if (nextion.refresh ||
       sensor1.ppb_prev != sensor1.ppb ||
       sensor2.ppb_prev != sensor2.ppb ||
-      nextion.screen_realtime_sd_icon_refresh)
+      nextion.screen_realtime_sd_icon_refresh ||
+      nextion.header_sensor_icon_refresh)
   {
     nextion.refresh = 0;
     sensor1.ppb_prev = sensor1.ppb;
     sensor2.ppb_prev = sensor2.ppb;
     nextion.screen_realtime_sd_icon_refresh = 0;
+    nextion.header_sensor_icon_refresh = 0;
     { // sensor average
       uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x2E, 0x30, 0x30, 0x30, 0x20, 0x50, 0x50, 0x4D, 0x22, 0xff, 0xff, 0xff};
       buff[8] = (ppb_avg % 100000 / 10000) + 0x30;
@@ -250,6 +272,11 @@ void nextion_screen_realtime_manager()
       buff[7] = (sd_card.state) ? 0x35 : 0x36;
       nextion_exec_cmd(buff, sizeof(buff));
     }
+    { // sensor
+      uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
+      buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x33 : 0x34;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
   }
 }
 
@@ -257,10 +284,14 @@ void nextion_screen_history_manager()
 {
   if (nextion.refresh ||
       history_update_screen ||
-      nextion.screen_history_refresh_clock)
+      nextion.screen_history_refresh_clock ||
+      nextion.screen_realtime_sd_icon_refresh ||
+      nextion.header_sensor_icon_refresh)
   {
     nextion.refresh = 0;
     history_update_screen = 0;
+    nextion.screen_realtime_sd_icon_refresh = 0;
+    nextion.header_sensor_icon_refresh = 0;
     {
       /* TODO: Must change 6 to 60 */
 #define NUM_PAGES 6
@@ -315,6 +346,16 @@ void nextion_screen_history_manager()
         buff[15] = (NUM_PAGES) + 0x30;
         nextion_exec_cmd(buff, sizeof(buff));
       }
+    }
+    { // sd
+      uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
+      buff[7] = (sd_card.state) ? 0x35 : 0x36;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+    { // sensor
+      uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
+      buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x33 : 0x34;
+      nextion_exec_cmd(buff, sizeof(buff));
     }
   }
 }
@@ -429,7 +470,7 @@ void history_second()
 
     nextion.screen_history_refresh_clock = 1;
 
-#if 1
+#if 0
     Serial.println(rtc.second_curr);
 #endif
 #if 0
@@ -459,7 +500,7 @@ void history_minute()
     sd_card.write_state = 1;
     sd_card.write_val = avg;
 
-#if 1
+#if 0
     for (int i = 0; i < 60; i++)
     {
       Serial.print(history.minute_buff[i]);
@@ -497,7 +538,7 @@ void history_hour()
 
     history_update_screen = 1;
 
-#if 1
+#if 0
     Serial.println("**************************************************************");
     for (int i = 0; i < 60; i++)
     {
@@ -540,7 +581,6 @@ void sd_card_init()
     {
       sd_card.tried_to_initialize = 0;
       sd_card.state = 0;
-      
       nextion.screen_realtime_sd_icon_refresh = 1;
     }
   }
@@ -572,6 +612,8 @@ void sd_card_wtite()
     }
   }
 }
+
+
 
 // ***********************************************************************************************
 // ;core
@@ -611,6 +653,8 @@ void setup()
 
   nextion.screen_realtime_sd_icon_refresh = 1;
 }
+
+
 
 void loop()
 {
