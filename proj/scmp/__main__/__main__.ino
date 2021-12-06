@@ -3,7 +3,26 @@
 RTC_DS3231 rtc_ds3231;
 DateTime now;
 
+#include <SPI.h>
+#include <SD.h>
+File file;
+
+uint32_t is_communicating_timer = 0;
+
 uint8_t history_update_screen = 0;
+
+typedef struct sd_card_t
+{
+  int8_t state;
+  int8_t tried_to_initialize;
+  int8_t pin;
+  int8_t pin_cd;
+  int8_t is_inserted;
+  int8_t is_inserted_prev;
+  int8_t write_state;
+  int16_t write_val;
+} sd_card_t;
+sd_card_t sd_card = {};
 
 typedef struct history_t
 {
@@ -51,6 +70,8 @@ typedef struct nextion_t
   int8_t screen_all_refresh_sensor_icon;
 
   int8_t history_page;
+
+  int8_t screen_realtime_sd_icon_refresh;
 
 } nextion_t;
 nextion_t nextion = {};
@@ -132,7 +153,7 @@ void sensor1_read()
         sensor1.ppb = tmp;
         sensor1.ppb_prev = -1;
         ppb_avg = (sensor1.ppb + sensor2.ppb) / 2;
-        
+
         is_communicating_timer = millis();
         sensor1.is_communicating = 1;
         nextion.screen_all_refresh_sensor_icon = 1;
@@ -154,7 +175,10 @@ void sensor2_read()
         sensor2.ppb = tmp;
         sensor2.ppb_prev = -1;
         ppb_avg = (sensor1.ppb + sensor2.ppb) / 2;
+
+        is_communicating_timer = millis();
         sensor1.is_communicating = 1;
+        nextion.screen_all_refresh_sensor_icon = 1;
       }
     }
   }
@@ -179,12 +203,14 @@ void nextion_screen_realtime_manager()
 {
   if (nextion.refresh ||
       sensor1.ppb_prev != sensor1.ppb ||
-      sensor2.ppb_prev != sensor2.ppb)
+      sensor2.ppb_prev != sensor2.ppb ||
+      nextion.screen_realtime_sd_icon_refresh)
   {
     nextion.refresh = 0;
     sensor1.ppb_prev = sensor1.ppb;
     sensor2.ppb_prev = sensor2.ppb;
-    {
+    nextion.screen_realtime_sd_icon_refresh = 0;
+    { // sensor average
       uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x2E, 0x30, 0x30, 0x30, 0x20, 0x50, 0x50, 0x4D, 0x22, 0xff, 0xff, 0xff};
       buff[8] = (ppb_avg % 100000 / 10000) + 0x30;
       buff[9] = (ppb_avg % 10000 / 1000) + 0x30;
@@ -193,7 +219,7 @@ void nextion_screen_realtime_manager()
       buff[13] = (ppb_avg % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
-    {
+    { // sensor 1
       uint8_t buff[] = {0x74, 0x31, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x2E, 0x30, 0x30, 0x30, 0x20, 0x50, 0x50, 0x4D, 0x22, 0xff, 0xff, 0xff};
       buff[8] = (sensor1.ppb % 100000 / 10000) + 0x30;
       buff[9] = (sensor1.ppb % 10000 / 1000) + 0x30;
@@ -202,7 +228,7 @@ void nextion_screen_realtime_manager()
       buff[13] = (sensor1.ppb % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
-    {
+    { // sensor 2
       uint8_t buff[] = {0x74, 0x32, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x2E, 0x30, 0x30, 0x30, 0x20, 0x50, 0x50, 0x4D, 0x22, 0xff, 0xff, 0xff};
       buff[8] = (sensor2.ppb % 100000 / 10000) + 0x30;
       buff[9] = (sensor2.ppb % 10000 / 1000) + 0x30;
@@ -211,7 +237,7 @@ void nextion_screen_realtime_manager()
       buff[13] = (sensor2.ppb % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
-    {
+    { // rtc
       uint8_t buff[] = {0x74, 0x33, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
       buff[8] = (rtc.hour_curr % 100 / 10) + 0x30;
       buff[9] = (rtc.hour_curr % 10 / 1) + 0x30;
@@ -219,12 +245,14 @@ void nextion_screen_realtime_manager()
       buff[12] = (rtc.minute_curr % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
+    { // sd
+      uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
+      buff[7] = (sd_card.state) ? 0x35 : 0x36;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
   }
 }
 
-void nextion_screen_history_update_clock()
-{
-}
 void nextion_screen_history_manager()
 {
   if (nextion.refresh ||
@@ -281,7 +309,6 @@ void nextion_screen_history_manager()
 
         nextion.screen_history_refresh_clock = 0;
       }
-
       {
         uint8_t buff[] = {0x74, 0x37, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x50, 0x61, 0x67, 0x65, 0x20, 0x31, 0x2F, 0x36, 0x22, 0xff, 0xff, 0xff};
         buff[13] = (nextion.history_page + 1) + 0x30;
@@ -330,17 +357,13 @@ void nextion_evaluate_serial()
       }
       else if (compare_array(nextion_history_prev, buffer_nextion))
       {
-        if (nextion.history_page > 0) nextion.history_page--;
-        else nextion.history_page = 0;
+        nextion.history_page = (nextion.history_page > 0) ? nextion.history_page - 1 : 0;
         history_update_screen = 1;
-        //Serial.println(nextion.history_page);
       }
       else if (compare_array(nextion_history_next, buffer_nextion))
       {
-        if (nextion.history_page < 5) nextion.history_page++;
-        else nextion.history_page = 5;
+        nextion.history_page = (nextion.history_page < 5) ? nextion.history_page + 1 : 5;
         history_update_screen = 1;
-        //Serial.println(nextion.history_page);
       }
 #if 0
       else if (compare_array(nextion_history_debug, buffer_nextion))
@@ -367,6 +390,8 @@ void nextion_replace_screen(screens screen)
   nextion_exec_cmd(buff, sizeof(buff));
 }
 
+
+
 // ***********************************************************************************************
 // ;rtc
 // ***********************************************************************************************
@@ -380,6 +405,8 @@ void rtc_manager()
   rtc.minute_curr = now.minute();
   rtc.second_curr = now.second();
 }
+
+
 
 // ***********************************************************************************************
 // ;history
@@ -428,6 +455,9 @@ void history_minute()
 
     for (int i = 60 - 1; i > 0; i--) history.minute_buff[i] = history.minute_buff[i - 1];
     history.minute_buff[0] = avg;
+
+    sd_card.write_state = 1;
+    sd_card.write_val = avg;
 
 #if 1
     for (int i = 0; i < 60; i++)
@@ -480,6 +510,69 @@ void history_hour()
   }
 }
 
+
+
+// ----------------------------------------------------------------------------------------------------------
+// ;sd
+// ----------------------------------------------------------------------------------------------------------
+void sd_manager()
+{
+  sd_card_init();
+  sd_card_wtite();
+}
+void sd_card_init()
+{
+  sd_card.is_inserted = (digitalRead(sd_card.pin_cd) == LOW) ? 1 : 0;
+  if (sd_card.is_inserted_prev != sd_card.is_inserted)
+  {
+    sd_card.is_inserted_prev = sd_card.is_inserted;
+    if (sd_card.is_inserted)
+    {
+      if (!sd_card.tried_to_initialize)
+      {
+        sd_card.tried_to_initialize = 1;
+        sd_card.state = (SD.begin(sd_card.pin)) ? 1 : 0;
+
+        nextion.screen_realtime_sd_icon_refresh = 1;
+      }
+    }
+    else
+    {
+      sd_card.tried_to_initialize = 0;
+      sd_card.state = 0;
+      
+      nextion.screen_realtime_sd_icon_refresh = 1;
+    }
+  }
+}
+void sd_card_wtite()
+{
+  if (sd_card.write_state)
+  {
+    sd_card.write_state = 0;
+    if (sd_card.state == 1)
+    {
+      file = SD.open("history.csv", FILE_WRITE);
+      file.print(String(rtc.year_curr));
+      file.write(',');
+      file.print(String(rtc.month_curr));
+      file.write(',');
+      file.print(String(rtc.day_curr));
+      file.write(',');
+      file.print(String(rtc.hour_curr));
+      file.write(',');
+      file.print(String(rtc.minute_curr));
+      file.write(',');
+      file.print(String(rtc.second_curr));
+      file.write(',');
+      file.print(String(sd_card.write_val));
+      file.write(',');
+      file.write('\n');
+      file.close();
+    }
+  }
+}
+
 // ***********************************************************************************************
 // ;core
 // ***********************************************************************************************
@@ -490,12 +583,12 @@ void setup()
   Serial2.begin(9600);
   Serial3.begin(9600);
 
+  // ************************
+  // ;rtc init
+  // ************************
   if (!rtc_ds3231.begin()) {}
   else {}
-  if (rtc_ds3231.lostPower())
-  {
-    rtc_ds3231.adjust(DateTime(F(__DATE__), F(__TIME__)));
-  }
+  if (rtc_ds3231.lostPower()) rtc_ds3231.adjust(DateTime(F(__DATE__), F(__TIME__)));
   //rtc_ds3231.adjust(DateTime(F(__DATE__), F(__TIME__)));
   //rtc_ds3231.adjust(DateTime(2014, 1, 21, 8, 59, 50));
   now = rtc_ds3231.now();
@@ -506,13 +599,22 @@ void setup()
   rtc.minute_curr = rtc.minute_prev = now.minute();
   rtc.second_curr = rtc.second_prev = now.second();
 
+  // *************************
+  // ;sd init
+  // *************************
+  sd_card.pin = 4;
+  sd_card.pin_cd = 3;
+
   nextion_replace_screen(screen_splash);
   delay(2000);
   nextion_replace_screen(screen_realtime);
+
+  nextion.screen_realtime_sd_icon_refresh = 1;
 }
 
 void loop()
 {
+  sd_manager();
   rtc_manager();
 
   sensor_manager();

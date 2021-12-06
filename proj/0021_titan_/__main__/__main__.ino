@@ -3,15 +3,12 @@ SoftwareSerial mySerial(2, 3);
 
 #define RELAY_PIN 8
 
-int16_t set_ozone_ppb = 1500;
-
 // **********************************************************************
 // ;system
 // **********************************************************************
 typedef struct sys_t
 {
   int8_t power_is_on;
-  int32_t countdown_timer;
   int32_t countdown_counter;
   int32_t countdown_millis;
   int16_t ppb_target;
@@ -20,7 +17,7 @@ typedef struct sys_t
 sys_t sys = {};
 
 // **********************************************************************
-// SENSORE
+// ;sensor
 // **********************************************************************
 typedef struct sensor_t
 {
@@ -48,16 +45,25 @@ typedef struct nextion_t
   int8_t set_ozone_ppb_refresh;
   int8_t ppb_target_refresh;
   int8_t countdown_target_refresh;
+
+  int8_t target_ppm_refresh;
+  int8_t set_target_ppm_value_refresh;
+  int8_t set_target_ppm_sub_refresh;
+  int8_t set_target_ppm_add_refresh;
+  int8_t set_countdown_title_refresh;
+  int8_t set_countdown_value_refresh;
+  int8_t set_countdown_sub_refresh;
+  int8_t set_countdown_add_refresh;
 } nextion_t;
 nextion_t nextion = {};
 
 const uint8_t BUFFER_SIZE = 20;
 uint8_t buffer_nextion[BUFFER_SIZE];
 uint8_t nextion_home_power[BUFFER_SIZE] = {101, 1, 3, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t nextion_home_ppb_target_sub[BUFFER_SIZE] = {101, 1, 7, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t nextion_home_ppb_target_add[BUFFER_SIZE] = {101, 1, 8, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t nextion_home_countdown_target_sub[BUFFER_SIZE] = {101, 1, 9, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t nextion_home_countdown_target_add[BUFFER_SIZE] = {101, 1, 10, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_home_ppb_target_sub[BUFFER_SIZE] = {101, 1, 8, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_home_ppb_target_add[BUFFER_SIZE] = {101, 1, 9, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_home_countdown_target_sub[BUFFER_SIZE] = {101, 1, 10, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_home_countdown_target_add[BUFFER_SIZE] = {101, 1, 11, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // -----------------------------------------------------------------------------------
 // ;sensor
@@ -136,7 +142,7 @@ void nextion_evaluate_serial()
         {
           sys.power_is_on = 0;
           nextion.power_refresh = 1;
-          sys.countdown_counter = sys.countdown_timer;
+          sys.countdown_counter = sys.countdown_target;
           nextion.countdown_refresh = 1;
           digitalWrite(RELAY_PIN, LOW);
         }
@@ -144,32 +150,62 @@ void nextion_evaluate_serial()
         {
           sys.power_is_on = 1;
           nextion.power_refresh = 1;
+          sys.countdown_counter = sys.countdown_target;
+          nextion.countdown_refresh = 1;
           digitalWrite(RELAY_PIN, HIGH);
         }
+        nextion.target_ppm_refresh = 1;
+        nextion.set_target_ppm_value_refresh = 1;
+        nextion.set_countdown_title_refresh = 1;
+        nextion.set_countdown_value_refresh = 1;
+        nextion.set_target_ppm_sub_refresh = 1;
+        nextion.set_target_ppm_add_refresh = 1;
+        nextion.set_countdown_sub_refresh = 1;
+        nextion.set_countdown_add_refresh = 1;
       }
       else if (compare_array(nextion_home_ppb_target_sub, buffer_nextion))
       {
-        sys.ppb_target -= 100;
-        if (sys.ppb_target < 0) sys.ppb_target = 0;
-        nextion.ppb_target_refresh = 1;
+        if (!sys.power_is_on)
+        {
+          sys.ppb_target -= 100;
+          if (sys.ppb_target < 0) sys.ppb_target = 0;
+          nextion.ppb_target_refresh = 1;
+          nextion.set_ozone_ppb_refresh = 1;
+        }
       }
       else if (compare_array(nextion_home_ppb_target_add, buffer_nextion))
       {
-        sys.ppb_target += 100;
-        if (sys.ppb_target > 10000) sys.ppb_target = 10000;
-        nextion.ppb_target_refresh = 1;
+        if (!sys.power_is_on)
+        {
+          sys.ppb_target += 100;
+          if (sys.ppb_target > 10000) sys.ppb_target = 10000;
+          nextion.ppb_target_refresh = 1;
+          nextion.set_ozone_ppb_refresh = 1;
+        }
       }
       else if (compare_array(nextion_home_countdown_target_sub, buffer_nextion))
       {
-        sys.countdown_target -= 15;
-        if (sys.countdown_target < 0) sys.countdown_target = 0;
-        nextion.countdown_target_refresh = 1;
+        if (!sys.power_is_on)
+        {
+          sys.countdown_target -= 15;
+          if (sys.countdown_target < 0) sys.countdown_target = 0;
+          nextion.countdown_target_refresh = 1;
+
+          sys.countdown_counter = sys.countdown_target;
+          nextion.countdown_refresh = 1;
+        }
       }
       else if (compare_array(nextion_home_countdown_target_add, buffer_nextion))
       {
-        sys.countdown_target += 15;
-        if (sys.countdown_target > 3 * 60) sys.countdown_target = 3 * 60;
-        nextion.countdown_target_refresh = 1;
+        if (!sys.power_is_on)
+        {
+          sys.countdown_target += 15;
+          if (sys.countdown_target > 3 * 60) sys.countdown_target = 3 * 60;
+          nextion.countdown_target_refresh = 1;
+
+          sys.countdown_counter = sys.countdown_target;
+          nextion.countdown_refresh = 1;
+        }
       }
       break;
   }
@@ -215,11 +251,11 @@ void nextion_manage_screen_home()
     nextion.set_ozone_ppb_refresh = 0;
     {
       uint8_t buff[] = {0x74, 0x31, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x2E, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-      buff[8] = (set_ozone_ppb % 100000 / 10000) + 0x30;
-      buff[9] = (set_ozone_ppb % 10000 / 1000) + 0x30;
-      buff[11] = (set_ozone_ppb % 1000 / 100) + 0x30;
-      buff[12] = (set_ozone_ppb % 100 / 10) + 0x30;
-      //buff[13] = (set_ozone_ppb % 10 / 1) + 0x30;
+      buff[8] = (sys.ppb_target % 100000 / 10000) + 0x30;
+      buff[9] = (sys.ppb_target % 10000 / 1000) + 0x30;
+      buff[11] = (sys.ppb_target % 1000 / 100) + 0x30;
+      buff[12] = (sys.ppb_target % 100 / 10) + 0x30;
+      //buff[13] = (sys.ppb_target % 10 / 1) + 0x30;
       nextion_send_command(buff, sizeof(buff));
     }
   }
@@ -269,6 +305,134 @@ void nextion_manage_screen_home()
       nextion_send_command(buff, sizeof(buff));
     }
   }
+  if (nextion.target_ppm_refresh)
+  {
+    nextion.target_ppm_refresh = 0;
+    {
+      if (sys.power_is_on)
+      {
+        uint8_t buff[] = {0x74, 0x36, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x35, 0x32, 0x38, 0x35, 0x37, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+      else
+      {
+        uint8_t buff[] = {0x74, 0x36, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x32, 0x32, 0x36, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+    }
+  }
+  if (nextion.set_target_ppm_value_refresh)
+  {
+    nextion.set_target_ppm_value_refresh = 0;
+    {
+      if (sys.power_is_on)
+      {
+        uint8_t buff[] = {0x74, 0x33, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x35, 0x32, 0x38, 0x35, 0x37, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+      else
+      {
+        uint8_t buff[] = {0x74, 0x33, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x32, 0x32, 0x36, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+    }
+  }
+  if (nextion.set_countdown_title_refresh)
+  {
+    nextion.set_countdown_title_refresh = 0;
+    {
+      if (sys.power_is_on)
+      {
+        uint8_t buff[] = {0x74, 0x37, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x35, 0x32, 0x38, 0x35, 0x37, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+      else
+      {
+        uint8_t buff[] = {0x74, 0x37, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x32, 0x32, 0x36, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+    }
+  }
+  if (nextion.set_countdown_value_refresh)
+  {
+    nextion.set_countdown_value_refresh = 0;
+    {
+      if (sys.power_is_on)
+      {
+        uint8_t buff[] = {0x74, 0x34, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x35, 0x32, 0x38, 0x35, 0x37, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+      else
+      {
+        uint8_t buff[] = {0x74, 0x34, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x32, 0x32, 0x36, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+    }
+  }
+  if (nextion.set_target_ppm_sub_refresh)
+  {
+    nextion.set_target_ppm_sub_refresh = 0;
+    {
+      if (sys.power_is_on)
+      {
+        uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x35, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+      else
+      {
+        uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x32, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+    }
+  }
+  if (nextion.set_target_ppm_add_refresh)
+  {
+    nextion.set_target_ppm_add_refresh = 0;
+    {
+      if (sys.power_is_on)
+      {
+        uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+      else
+      {
+        uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x33, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+    }
+  }
+  if (nextion.set_countdown_add_refresh)
+  {
+    nextion.set_countdown_add_refresh = 0;
+    {
+      if (sys.power_is_on)
+      {
+        uint8_t buff[] = {0x70, 0x32, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x35, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+      else
+      {
+        uint8_t buff[] = {0x70, 0x32, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x32, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+    }
+  }
+  if (nextion.set_countdown_sub_refresh)
+  {
+    nextion.set_countdown_sub_refresh = 0;
+    {
+      if (sys.power_is_on)
+      {
+        uint8_t buff[] = {0x70, 0x33, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+      else
+      {
+        uint8_t buff[] = {0x70, 0x33, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x33, 0xff, 0xff, 0xff};
+        nextion_send_command(buff, sizeof(buff));
+      }
+    }
+  }
 }
 void nextion_manager()
 {
@@ -293,12 +457,16 @@ void relay_manager()
 {
   if (sys.power_is_on)
   {
-    if (sensor.ppb < set_ozone_ppb)
+    if (sensor.ppb < sys.ppb_target)
     {
       digitalWrite(RELAY_PIN, HIGH);
     }
     else
     {
+      sys.power_is_on = 0;
+      nextion.power_refresh = 1;
+      sys.countdown_counter = sys.countdown_target;
+      nextion.countdown_refresh = 1;
       digitalWrite(RELAY_PIN, LOW);
     }
   }
@@ -329,9 +497,20 @@ void countdown_complete()
 {
   if (sys.countdown_counter < 0)
   {
-    sys.countdown_counter = sys.countdown_timer;
     sys.power_is_on = 0;
+    sys.countdown_counter = sys.countdown_target;
+    nextion.power_refresh = 1;
+    nextion.countdown_refresh = 1;
     digitalWrite(RELAY_PIN, LOW);
+
+    nextion.target_ppm_refresh = 1;
+    nextion.set_target_ppm_value_refresh = 1;
+    nextion.set_countdown_title_refresh = 1;
+    nextion.set_countdown_value_refresh = 1;
+    nextion.set_target_ppm_sub_refresh = 1;
+    nextion.set_target_ppm_add_refresh = 1;
+    nextion.set_countdown_sub_refresh = 1;
+    nextion.set_countdown_add_refresh = 1;
   }
 }
 
@@ -340,7 +519,8 @@ void countdown_complete()
 // -----------------------------------------------------------------------------------
 void setup()
 {
-  sys.countdown_timer = sys.countdown_counter = 10;
+  sys.countdown_target = sys.countdown_counter = 10;
+  sys.ppb_target = 1000;
 
   Serial.begin(9600);
   mySerial.begin(9600);
@@ -357,6 +537,10 @@ void setup()
   nextion.ppb_target_refresh = 1;
   nextion.countdown_target_refresh = 1;
   nextion.power_refresh = 1;
+
+  nextion.target_ppm_refresh = 1;
+  nextion.set_target_ppm_value_refresh = 1;
+  nextion.set_countdown_title_refresh = 1;
 }
 
 void loop()
