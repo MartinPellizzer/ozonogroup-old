@@ -249,7 +249,7 @@ void nextion_manager()
 {
   nextion_listen();
   if (nextion.screen == screen_splash) nextion_screen_splash_manager();
-  else if (nextion.screen == screen_realtime) nextion_screen_realtime_manager();
+  else if (nextion.screen == screen_realtime) nextion_screen_realtime_manager(0);
   else if (nextion.screen == screen_history) nextion_screen_history_manager();
   else if (nextion.screen == screen_clock) nextion_screen_clock_manager();
   else if (nextion.screen == screen_ymd) nextion_screen_ymd_manager();
@@ -258,6 +258,7 @@ void nextion_manager()
 
 void nextion_header_sensor_refresh()
 {
+  nextion.header_sensor_icon_refresh = 0;
   uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
   buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x36 : 0x37;
   nextion_exec_cmd(buff, sizeof(buff));
@@ -265,6 +266,7 @@ void nextion_header_sensor_refresh()
 
 void nextion_header_sd_refresh()
 {
+  nextion.header_sd_icon_refresh = 0;
   uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
   buff[7] = (sd_card.state) ? 0x38 : 0x39;
   nextion_exec_cmd(buff, sizeof(buff));
@@ -284,29 +286,18 @@ void nextion_screen_splash_manager()
 {
 }
 
-void nextion_screen_realtime_manager()
+void nextion_screen_realtime_manager(uint8_t refresh)
 {
-  if (nextion.refresh ||
-      sensor1.ppb_prev != sensor1.ppb ||
-      sensor2.ppb_prev != sensor2.ppb ||
-      nextion.header_sd_icon_refresh ||
-      nextion.header_sensor_icon_refresh)
+  if (refresh)
   {
-    nextion.refresh = 0;
+    nextion.screen = screen_realtime;
+    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x31, 0xff, 0xff, 0xff};
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+  if (refresh || sensor1.ppb_prev != sensor1.ppb)
+  {
     sensor1.ppb_prev = sensor1.ppb;
-    sensor2.ppb_prev = sensor2.ppb;
-    nextion.header_sd_icon_refresh = 0;
-    nextion.header_sensor_icon_refresh = 0;
-    { // sensor average
-      uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x2E, 0x30, 0x30, 0x30, 0x20, 0x50, 0x50, 0x4D, 0x22, 0xff, 0xff, 0xff};
-      buff[8] = (ppb_avg % 100000 / 10000) + 0x30;
-      buff[9] = (ppb_avg % 10000 / 1000) + 0x30;
-      buff[11] = (ppb_avg % 1000 / 100) + 0x30;
-      buff[12] = (ppb_avg % 100 / 10) + 0x30;
-      buff[13] = (ppb_avg % 10 / 1) + 0x30;
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    { // sensor 1
+    {
       uint8_t buff[] = {0x74, 0x31, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x2E, 0x30, 0x30, 0x30, 0x20, 0x50, 0x50, 0x4D, 0x22, 0xff, 0xff, 0xff};
       buff[8] = (sensor1.ppb % 100000 / 10000) + 0x30;
       buff[9] = (sensor1.ppb % 10000 / 1000) + 0x30;
@@ -315,7 +306,20 @@ void nextion_screen_realtime_manager()
       buff[13] = (sensor1.ppb % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
-    { // sensor 2
+    {
+      uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x2E, 0x30, 0x30, 0x30, 0x20, 0x50, 0x50, 0x4D, 0x22, 0xff, 0xff, 0xff};
+      buff[8] = (ppb_avg % 100000 / 10000) + 0x30;
+      buff[9] = (ppb_avg % 10000 / 1000) + 0x30;
+      buff[11] = (ppb_avg % 1000 / 100) + 0x30;
+      buff[12] = (ppb_avg % 100 / 10) + 0x30;
+      buff[13] = (ppb_avg % 10 / 1) + 0x30;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+  }
+  if (refresh || sensor2.ppb_prev != sensor2.ppb)
+  {
+    sensor2.ppb_prev = sensor2.ppb;
+    {
       uint8_t buff[] = {0x74, 0x32, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x2E, 0x30, 0x30, 0x30, 0x20, 0x50, 0x50, 0x4D, 0x22, 0xff, 0xff, 0xff};
       buff[8] = (sensor2.ppb % 100000 / 10000) + 0x30;
       buff[9] = (sensor2.ppb % 10000 / 1000) + 0x30;
@@ -324,10 +328,19 @@ void nextion_screen_realtime_manager()
       buff[13] = (sensor2.ppb % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
-    nextion_header_clock_refresh();
-    nextion_header_sensor_refresh();
-    nextion_header_sd_refresh();
+    {
+      uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x2E, 0x30, 0x30, 0x30, 0x20, 0x50, 0x50, 0x4D, 0x22, 0xff, 0xff, 0xff};
+      buff[8] = (ppb_avg % 100000 / 10000) + 0x30;
+      buff[9] = (ppb_avg % 10000 / 1000) + 0x30;
+      buff[11] = (ppb_avg % 1000 / 100) + 0x30;
+      buff[12] = (ppb_avg % 100 / 10) + 0x30;
+      buff[13] = (ppb_avg % 10 / 1) + 0x30;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
   }
+  if (refresh || nextion.header_sensor_icon_refresh) nextion_header_sensor_refresh();
+  if (refresh || nextion.header_sd_icon_refresh) nextion_header_sd_refresh();
+  if (refresh || nextion.header_clock_refresh) nextion_header_clock_refresh();
 }
 
 void nextion_screen_history_manager()
@@ -398,7 +411,7 @@ void nextion_screen_clock_manager()
     nextion.refresh = 0;
     nextion.header_sd_icon_refresh = 0;
     nextion.header_sensor_icon_refresh = 0;
-    
+
     { // y/m/d
       uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x30, 0x30, 0x2F, 0x30, 0x30, 0x2F, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
       buff[8] = (rtc.year_curr % 10000 / 1000) + 0x30;
@@ -541,10 +554,7 @@ void nextion_evaluate_serial()
       }
       break;
     case screen_history:
-      if (compare_array(nextion_history_realtime, buffer_nextion))
-      {
-        nextion_replace_screen(screen_realtime);
-      }
+      if (compare_array(nextion_history_realtime, buffer_nextion)) nextion_screen_realtime_manager(1);
       else if (compare_array(nextion_history_clock, buffer_nextion))
       {
         nextion_replace_screen(screen_clock);
@@ -567,10 +577,7 @@ void nextion_evaluate_serial()
 #endif
       break;
     case screen_clock:
-      if (compare_array(nextion_clock_realtime, buffer_nextion))
-      {
-        nextion_replace_screen(screen_realtime);
-      }
+      if (compare_array(nextion_clock_realtime, buffer_nextion)) nextion_screen_realtime_manager(1);
       else if (compare_array(nextion_clock_history, buffer_nextion))
       {
         nextion_replace_screen(screen_history);
@@ -912,7 +919,7 @@ void setup()
 
   nextion_replace_screen(screen_splash);
   delay(2000);
-  nextion_replace_screen(screen_realtime);
+  nextion_screen_realtime_manager(1);
 
   nextion.header_sd_icon_refresh = 1;
 }
