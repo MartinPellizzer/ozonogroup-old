@@ -67,7 +67,7 @@ typedef struct nextion_t
 
   uint8_t screen;
   uint8_t refresh;
-  int8_t screen_history_refresh_clock;
+  int8_t header_clock_refresh;
   int8_t header_sensor_icon_refresh;
   int8_t header_sd_icon_refresh;
 
@@ -256,6 +256,30 @@ void nextion_manager()
   else if (nextion.screen == screen_hms) nextion_screen_hms_manager();
 }
 
+void nextion_header_sensor_refresh()
+{
+  uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
+  buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x36 : 0x37;
+  nextion_exec_cmd(buff, sizeof(buff));
+}
+
+void nextion_header_sd_refresh()
+{
+  uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
+  buff[7] = (sd_card.state) ? 0x38 : 0x39;
+  nextion_exec_cmd(buff, sizeof(buff));
+}
+
+void nextion_header_clock_refresh()
+{
+  uint8_t buff[] = {0x68, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+  buff[8] = (rtc.hour_curr % 100 / 10) + 0x30;
+  buff[9] = (rtc.hour_curr % 10 / 1) + 0x30;
+  buff[11] = (rtc.minute_curr % 100 / 10) + 0x30;
+  buff[12] = (rtc.minute_curr % 10 / 1) + 0x30;
+  nextion_exec_cmd(buff, sizeof(buff));
+}
+
 void nextion_screen_splash_manager()
 {
 }
@@ -300,24 +324,9 @@ void nextion_screen_realtime_manager()
       buff[13] = (sensor2.ppb % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
-    { // rtc
-      uint8_t buff[] = {0x74, 0x33, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-      buff[8] = (rtc.hour_curr % 100 / 10) + 0x30;
-      buff[9] = (rtc.hour_curr % 10 / 1) + 0x30;
-      buff[11] = (rtc.minute_curr % 100 / 10) + 0x30;
-      buff[12] = (rtc.minute_curr % 10 / 1) + 0x30;
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    { // sensor
-      uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
-      buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x36 : 0x37;
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    { // sd
-      uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
-      buff[7] = (sd_card.state) ? 0x38 : 0x39;
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
+    nextion_header_clock_refresh();
+    nextion_header_sensor_refresh();
+    nextion_header_sd_refresh();
   }
 }
 
@@ -325,7 +334,7 @@ void nextion_screen_history_manager()
 {
   if (nextion.refresh ||
       history_update_screen ||
-      nextion.screen_history_refresh_clock ||
+      nextion.header_clock_refresh ||
       nextion.header_sd_icon_refresh ||
       nextion.header_sensor_icon_refresh)
   {
@@ -333,71 +342,51 @@ void nextion_screen_history_manager()
     history_update_screen = 0;
     nextion.header_sd_icon_refresh = 0;
     nextion.header_sensor_icon_refresh = 0;
-    {
-      /* TODO: Must change 6 to 60 */
+    nextion.header_clock_refresh = 0;
+
+    /* TODO: Must change 6 to 60 */
 #define NUM_PAGES 6
-      for (int i = 0; i < NUM_PAGES; i++)
-      {
-        uint8_t page_index = i + (nextion.history_page * NUM_PAGES);
-        uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x3F, 0x3F, 0x2E, 0x3F, 0x3F, 0x3F, 0x20, 0x50, 0x50, 0x4D, 0x20, 0x20, 0x20, 0x3F, 0x3F, 0x3A, 0x3F, 0x3F, 0x20, 0x20, 0x20, 0x3F, 0x3F, 0x2F, 0x3F, 0x2F, 0x2F, 0x3F, 0x2F, 0x3F, 0x3F, 0x22, 0xff, 0xff, 0xff};
-        buff[1] = (i) + 0x30;
-        buff[8] = (history.hour_buff[page_index] % 100000 / 10000) + 0x30;
-        buff[9] = (history.hour_buff[page_index] % 10000 / 1000) + 0x30;
-        buff[11] = (history.hour_buff[page_index] % 1000 / 100) + 0x30;
-        buff[12] = (history.hour_buff[page_index] % 100 / 10) + 0x30;
-        buff[13] = (history.hour_buff[page_index] % 10 / 1) + 0x30;
+    for (int i = 0; i < NUM_PAGES; i++)
+    {
+      uint8_t page_index = i + (nextion.history_page * NUM_PAGES);
+      uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x3F, 0x3F, 0x2E, 0x3F, 0x3F, 0x3F, 0x20, 0x50, 0x50, 0x4D, 0x20, 0x20, 0x20, 0x3F, 0x3F, 0x3A, 0x3F, 0x3F, 0x20, 0x20, 0x20, 0x3F, 0x3F, 0x2F, 0x3F, 0x2F, 0x2F, 0x3F, 0x2F, 0x3F, 0x3F, 0x22, 0xff, 0xff, 0xff};
+      buff[1] = (i) + 0x30;
+      buff[8] = (history.hour_buff[page_index] % 100000 / 10000) + 0x30;
+      buff[9] = (history.hour_buff[page_index] % 10000 / 1000) + 0x30;
+      buff[11] = (history.hour_buff[page_index] % 1000 / 100) + 0x30;
+      buff[12] = (history.hour_buff[page_index] % 100 / 10) + 0x30;
+      buff[13] = (history.hour_buff[page_index] % 10 / 1) + 0x30;
 
-        buff[21] = (history.hour_buff_hour[page_index] % 100 / 10) + 0x30;
-        buff[22] = (history.hour_buff_hour[page_index] % 10 / 1) + 0x30;
+      buff[21] = (history.hour_buff_hour[page_index] % 100 / 10) + 0x30;
+      buff[22] = (history.hour_buff_hour[page_index] % 10 / 1) + 0x30;
 
-        buff[24] = (0) + 0x30;
-        buff[25] = (0) + 0x30;
+      buff[24] = (0) + 0x30;
+      buff[25] = (0) + 0x30;
 
-        buff[29] = (history.minute_buff_year[page_index] % 10000 / 1000) + 0x30;
-        buff[30] = (history.minute_buff_year[page_index] % 1000 / 100) + 0x30;
-        buff[31] = (history.minute_buff_year[page_index] % 100 / 10) + 0x30;
-        buff[32] = (history.minute_buff_year[page_index] % 10 / 1) + 0x30;
+      buff[29] = (history.minute_buff_year[page_index] % 10000 / 1000) + 0x30;
+      buff[30] = (history.minute_buff_year[page_index] % 1000 / 100) + 0x30;
+      buff[31] = (history.minute_buff_year[page_index] % 100 / 10) + 0x30;
+      buff[32] = (history.minute_buff_year[page_index] % 10 / 1) + 0x30;
 
-        buff[34] = (history.minute_buff_month[page_index] % 100 / 10) + 0x30;
-        buff[35] = (history.minute_buff_month[page_index] % 10 / 1) + 0x30;
+      buff[34] = (history.minute_buff_month[page_index] % 100 / 10) + 0x30;
+      buff[35] = (history.minute_buff_month[page_index] % 10 / 1) + 0x30;
 
-        buff[37] = (history.minute_buff_day[page_index] % 100 / 10) + 0x30;
-        buff[38] = (history.minute_buff_day[page_index] % 10 / 1) + 0x30;
+      buff[37] = (history.minute_buff_day[page_index] % 100 / 10) + 0x30;
+      buff[38] = (history.minute_buff_day[page_index] % 10 / 1) + 0x30;
 
-        nextion_exec_cmd(buff, sizeof(buff));
-      }
-
-      if (nextion.screen_history_refresh_clock)
-      {
-        uint8_t buff[] = {0x74, 0x36, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-        //uint8_t buff[] = {0x74, 0x36, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-        buff[8] = (rtc.hour_curr % 100 / 10) + 0x30;
-        buff[9] = (rtc.hour_curr % 10 / 1) + 0x30;
-        buff[11] = (rtc.minute_curr % 100 / 10) + 0x30;
-        buff[12] = (rtc.minute_curr % 10 / 1) + 0x30;
-        //buff[14] = (rtc.second_curr % 100 / 10) + 0x30;
-        //buff[15] = (rtc.second_curr % 10 / 1) + 0x30;
-        nextion_exec_cmd(buff, sizeof(buff));
-
-        nextion.screen_history_refresh_clock = 0;
-      }
-      {
-        uint8_t buff[] = {0x74, 0x37, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x50, 0x61, 0x67, 0x65, 0x20, 0x31, 0x2F, 0x36, 0x22, 0xff, 0xff, 0xff};
-        buff[13] = (nextion.history_page + 1) + 0x30;
-        buff[15] = (NUM_PAGES) + 0x30;
-        nextion_exec_cmd(buff, sizeof(buff));
-      }
-    }
-    { // sensor
-      uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
-      buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x36 : 0x37;
       nextion_exec_cmd(buff, sizeof(buff));
     }
-    { // sd
-      uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
-      buff[7] = (sd_card.state) ? 0x38 : 0x39;
+
+    {
+      uint8_t buff[] = {0x74, 0x37, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x50, 0x61, 0x67, 0x65, 0x20, 0x31, 0x2F, 0x36, 0x22, 0xff, 0xff, 0xff};
+      buff[13] = (nextion.history_page + 1) + 0x30;
+      buff[15] = (NUM_PAGES) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
+
+    nextion_header_clock_refresh();
+    nextion_header_sensor_refresh();
+    nextion_header_sd_refresh();
   }
 }
 void nextion_screen_clock_manager()
@@ -409,24 +398,7 @@ void nextion_screen_clock_manager()
     nextion.refresh = 0;
     nextion.header_sd_icon_refresh = 0;
     nextion.header_sensor_icon_refresh = 0;
-    { // rtc
-      uint8_t buff[] = {0x74, 0x36, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-      buff[8] = (rtc.hour_curr % 100 / 10) + 0x30;
-      buff[9] = (rtc.hour_curr % 10 / 1) + 0x30;
-      buff[11] = (rtc.minute_curr % 100 / 10) + 0x30;
-      buff[12] = (rtc.minute_curr % 10 / 1) + 0x30;
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    { // sensor
-      uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
-      buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x36 : 0x37;
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    { // sd
-      uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
-      buff[7] = (sd_card.state) ? 0x38 : 0x39;
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
+    
     { // y/m/d
       uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x30, 0x30, 0x2F, 0x30, 0x30, 0x2F, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
       buff[8] = (rtc.year_curr % 10000 / 1000) + 0x30;
@@ -449,6 +421,9 @@ void nextion_screen_clock_manager()
       buff[15] = (rtc.second_curr % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
+    nextion_header_clock_refresh();
+    nextion_header_sensor_refresh();
+    nextion_header_sd_refresh();
   }
 }
 void nextion_screen_ymd_manager()
@@ -486,24 +461,9 @@ void nextion_screen_ymd_manager()
       buff[9] = (rtc.day_tmp % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
-    { // rtc
-      uint8_t buff[] = {0x74, 0x36, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-      buff[8] = (rtc.hour_curr % 100 / 10) + 0x30;
-      buff[9] = (rtc.hour_curr % 10 / 1) + 0x30;
-      buff[11] = (rtc.minute_curr % 100 / 10) + 0x30;
-      buff[12] = (rtc.minute_curr % 10 / 1) + 0x30;
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    { // sensor
-      uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
-      buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x36 : 0x37;
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    { // sd
-      uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
-      buff[7] = (sd_card.state) ? 0x38 : 0x39;
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
+    nextion_header_clock_refresh();
+    nextion_header_sensor_refresh();
+    nextion_header_sd_refresh();
   }
 }
 void nextion_screen_hms_manager()
@@ -539,24 +499,9 @@ void nextion_screen_hms_manager()
       buff[9] = (rtc.second_tmp % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
-    { // rtc
-      uint8_t buff[] = {0x74, 0x36, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-      buff[8] = (rtc.hour_curr % 100 / 10) + 0x30;
-      buff[9] = (rtc.hour_curr % 10 / 1) + 0x30;
-      buff[11] = (rtc.minute_curr % 100 / 10) + 0x30;
-      buff[12] = (rtc.minute_curr % 10 / 1) + 0x30;
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    { // sensor
-      uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
-      buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x36 : 0x37;
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    { // sd
-      uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
-      buff[7] = (sd_card.state) ? 0x38 : 0x39;
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
+    nextion_header_clock_refresh();
+    nextion_header_sensor_refresh();
+    nextion_header_sd_refresh();
   }
 }
 
@@ -786,7 +731,7 @@ void history_second()
     for (int i = 60 - 1; i > 0; i--) history.second_buff[i] = history.second_buff[i - 1];
     history.second_buff[0] = ppb_avg;
 
-    nextion.screen_history_refresh_clock = 1;
+    nextion.header_clock_refresh = 1;
 
 #if 0
     Serial.println(rtc.second_curr);
