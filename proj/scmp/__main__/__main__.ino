@@ -7,7 +7,6 @@ DateTime now;
 #include <SD.h>
 File file;
 
-
 uint8_t history_update_screen = 0;
 
 typedef struct sd_card_t
@@ -55,6 +54,9 @@ enum screens
   screen_splash,
   screen_realtime,
   screen_history,
+  screen_clock,
+  screen_ymd,
+  screen_hms,
 };
 
 typedef struct nextion_t
@@ -67,11 +69,17 @@ typedef struct nextion_t
   uint8_t refresh;
   int8_t screen_history_refresh_clock;
   int8_t header_sensor_icon_refresh;
+  int8_t header_sd_icon_refresh;
 
   int8_t history_page;
 
-  int8_t screen_realtime_sd_icon_refresh;
+  int8_t screen_ymd_y_refresh;
+  int8_t screen_ymd_m_refresh;
+  int8_t screen_ymd_d_refresh;
 
+  int8_t screen_hms_h_refresh;
+  int8_t screen_hms_m_refresh;
+  int8_t screen_hms_s_refresh;
 } nextion_t;
 nextion_t nextion = {};
 
@@ -79,26 +87,56 @@ typedef struct rtc_t
 {
   int16_t year_curr;
   int16_t year_prev;
+  int16_t year_tmp;
   int8_t month_curr;
   int8_t month_prev;
+  int8_t month_tmp;
   int8_t day_curr;
   int8_t day_prev;
+  int8_t day_tmp;
   int8_t hour_curr;
   int8_t hour_prev;
+  int8_t hour_tmp;
   int8_t minute_curr;
   int8_t minute_prev;
+  int8_t minute_tmp;
   int8_t second_curr;
   int8_t second_prev;
+  int8_t second_tmp;
 } rtc_t;
 rtc_t rtc = {};
 
 const uint8_t BUFFER_SIZE = 20;
 uint8_t buffer_nextion[BUFFER_SIZE];
 uint8_t nextion_realtime_history[BUFFER_SIZE] = {101, 1, 5, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_realtime_clock[BUFFER_SIZE] = {101, 1, 9, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
 uint8_t nextion_history_realtime[BUFFER_SIZE] = {101, 2, 1, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t nextion_history_prev[BUFFER_SIZE] = {101, 2, 10, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t nextion_history_next[BUFFER_SIZE] = {101, 2, 11, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_history_clock[BUFFER_SIZE] = {101, 2, 16, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_history_prev[BUFFER_SIZE] = {101, 2, 9, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_history_next[BUFFER_SIZE] = {101, 2, 10, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t nextion_history_debug[BUFFER_SIZE] = {101, 2, 13, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+uint8_t nextion_clock_realtime[BUFFER_SIZE] = {101, 3, 3, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_clock_history[BUFFER_SIZE] = {101, 3, 4, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_clock_ymd[BUFFER_SIZE] = {101, 3, 6, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_clock_hms[BUFFER_SIZE] = {101, 3, 7, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+uint8_t nextion_ymd_prev[BUFFER_SIZE] = {101, 4, 4, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_ymd_y_sub[BUFFER_SIZE] = {101, 4, 5, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_ymd_y_add[BUFFER_SIZE] = {101, 4, 6, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_ymd_m_sub[BUFFER_SIZE] = {101, 4, 7, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_ymd_m_add[BUFFER_SIZE] = {101, 4, 8, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_ymd_d_sub[BUFFER_SIZE] = {101, 4, 9, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_ymd_d_add[BUFFER_SIZE] = {101, 4, 10, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+uint8_t nextion_hms_prev[BUFFER_SIZE] = {101, 5, 4, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_hms_h_sub[BUFFER_SIZE] = {101, 5, 5, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_hms_h_add[BUFFER_SIZE] = {101, 5, 6, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_hms_m_sub[BUFFER_SIZE] = {101, 5, 7, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_hms_m_add[BUFFER_SIZE] = {101, 5, 8, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_hms_s_sub[BUFFER_SIZE] = {101, 5, 9, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_hms_s_add[BUFFER_SIZE] = {101, 5, 10, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 bool compare_array(uint8_t *a, uint8_t *b)
 {
@@ -213,6 +251,9 @@ void nextion_manager()
   if (nextion.screen == screen_splash) nextion_screen_splash_manager();
   else if (nextion.screen == screen_realtime) nextion_screen_realtime_manager();
   else if (nextion.screen == screen_history) nextion_screen_history_manager();
+  else if (nextion.screen == screen_clock) nextion_screen_clock_manager();
+  else if (nextion.screen == screen_ymd) nextion_screen_ymd_manager();
+  else if (nextion.screen == screen_hms) nextion_screen_hms_manager();
 }
 
 void nextion_screen_splash_manager()
@@ -224,13 +265,13 @@ void nextion_screen_realtime_manager()
   if (nextion.refresh ||
       sensor1.ppb_prev != sensor1.ppb ||
       sensor2.ppb_prev != sensor2.ppb ||
-      nextion.screen_realtime_sd_icon_refresh ||
+      nextion.header_sd_icon_refresh ||
       nextion.header_sensor_icon_refresh)
   {
     nextion.refresh = 0;
     sensor1.ppb_prev = sensor1.ppb;
     sensor2.ppb_prev = sensor2.ppb;
-    nextion.screen_realtime_sd_icon_refresh = 0;
+    nextion.header_sd_icon_refresh = 0;
     nextion.header_sensor_icon_refresh = 0;
     { // sensor average
       uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x2E, 0x30, 0x30, 0x30, 0x20, 0x50, 0x50, 0x4D, 0x22, 0xff, 0xff, 0xff};
@@ -267,14 +308,14 @@ void nextion_screen_realtime_manager()
       buff[12] = (rtc.minute_curr % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
-    { // sd
-      uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
-      buff[7] = (sd_card.state) ? 0x35 : 0x36;
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
     { // sensor
       uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
-      buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x33 : 0x34;
+      buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x36 : 0x37;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+    { // sd
+      uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
+      buff[7] = (sd_card.state) ? 0x38 : 0x39;
       nextion_exec_cmd(buff, sizeof(buff));
     }
   }
@@ -285,12 +326,12 @@ void nextion_screen_history_manager()
   if (nextion.refresh ||
       history_update_screen ||
       nextion.screen_history_refresh_clock ||
-      nextion.screen_realtime_sd_icon_refresh ||
+      nextion.header_sd_icon_refresh ||
       nextion.header_sensor_icon_refresh)
   {
     nextion.refresh = 0;
     history_update_screen = 0;
-    nextion.screen_realtime_sd_icon_refresh = 0;
+    nextion.header_sd_icon_refresh = 0;
     nextion.header_sensor_icon_refresh = 0;
     {
       /* TODO: Must change 6 to 60 */
@@ -347,14 +388,173 @@ void nextion_screen_history_manager()
         nextion_exec_cmd(buff, sizeof(buff));
       }
     }
+    { // sensor
+      uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
+      buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x36 : 0x37;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
     { // sd
       uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
-      buff[7] = (sd_card.state) ? 0x35 : 0x36;
+      buff[7] = (sd_card.state) ? 0x38 : 0x39;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+  }
+}
+void nextion_screen_clock_manager()
+{
+  if (nextion.refresh ||
+      nextion.header_sd_icon_refresh ||
+      nextion.header_sensor_icon_refresh)
+  {
+    nextion.refresh = 0;
+    nextion.header_sd_icon_refresh = 0;
+    nextion.header_sensor_icon_refresh = 0;
+    { // rtc
+      uint8_t buff[] = {0x74, 0x36, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+      buff[8] = (rtc.hour_curr % 100 / 10) + 0x30;
+      buff[9] = (rtc.hour_curr % 10 / 1) + 0x30;
+      buff[11] = (rtc.minute_curr % 100 / 10) + 0x30;
+      buff[12] = (rtc.minute_curr % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
     { // sensor
       uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
-      buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x33 : 0x34;
+      buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x36 : 0x37;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+    { // sd
+      uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
+      buff[7] = (sd_card.state) ? 0x38 : 0x39;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+    { // y/m/d
+      uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x30, 0x30, 0x2F, 0x30, 0x30, 0x2F, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+      buff[8] = (rtc.year_curr % 10000 / 1000) + 0x30;
+      buff[9] = (rtc.year_curr % 1000 / 100) + 0x30;
+      buff[10] = (rtc.year_curr % 100 / 10) + 0x30;
+      buff[11] = (rtc.year_curr % 10 / 1) + 0x30;
+      buff[13] = (rtc.month_curr % 100 / 10) + 0x30;
+      buff[14] = (rtc.month_curr % 10 / 1) + 0x30;
+      buff[16] = (rtc.day_curr % 100 / 10) + 0x30;
+      buff[17] = (rtc.day_curr % 10 / 1) + 0x30;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+    { // h/m/s
+      uint8_t buff[] = {0x74, 0x31, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x2F, 0x30, 0x30, 0x2F, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+      buff[8] = (rtc.hour_curr % 100 / 10) + 0x30;
+      buff[9] = (rtc.hour_curr % 10 / 1) + 0x30;
+      buff[11] = (rtc.minute_curr % 100 / 10) + 0x30;
+      buff[12] = (rtc.minute_curr % 10 / 1) + 0x30;
+      buff[14] = (rtc.second_curr % 100 / 10) + 0x30;
+      buff[15] = (rtc.second_curr % 10 / 1) + 0x30;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+  }
+}
+void nextion_screen_ymd_manager()
+{
+  if (nextion.refresh ||
+      nextion.screen_ymd_y_refresh ||
+      nextion.screen_ymd_m_refresh ||
+      nextion.screen_ymd_d_refresh ||
+      nextion.header_sd_icon_refresh ||
+      nextion.header_sensor_icon_refresh)
+  {
+    nextion.refresh = 0;
+    nextion.screen_ymd_y_refresh = 0;
+    nextion.screen_ymd_m_refresh = 0;
+    nextion.screen_ymd_d_refresh = 0;
+    nextion.header_sd_icon_refresh = 0;
+    nextion.header_sensor_icon_refresh = 0;
+    { // yyyy
+      uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+      buff[8] = (rtc.year_tmp % 10000 / 1000) + 0x30;
+      buff[9] = (rtc.year_tmp % 1000 / 100) + 0x30;
+      buff[10] = (rtc.year_tmp % 100 / 10) + 0x30;
+      buff[11] = (rtc.year_tmp % 10 / 1) + 0x30;
+      nextion_exec_cmd(buff, sizeof(buff));
+    } // mm
+    {
+      uint8_t buff[] = {0x74, 0x31, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+      buff[8] = (rtc.month_tmp % 100 / 10) + 0x30;
+      buff[9] = (rtc.month_tmp % 10 / 1) + 0x30;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+    { // dd
+      uint8_t buff[] = {0x74, 0x32, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+      buff[8] = (rtc.day_tmp % 100 / 10) + 0x30;
+      buff[9] = (rtc.day_tmp % 10 / 1) + 0x30;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+    { // rtc
+      uint8_t buff[] = {0x74, 0x36, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+      buff[8] = (rtc.hour_curr % 100 / 10) + 0x30;
+      buff[9] = (rtc.hour_curr % 10 / 1) + 0x30;
+      buff[11] = (rtc.minute_curr % 100 / 10) + 0x30;
+      buff[12] = (rtc.minute_curr % 10 / 1) + 0x30;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+    { // sensor
+      uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
+      buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x36 : 0x37;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+    { // sd
+      uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
+      buff[7] = (sd_card.state) ? 0x38 : 0x39;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+  }
+}
+void nextion_screen_hms_manager()
+{
+  if (nextion.refresh ||
+      nextion.screen_hms_h_refresh ||
+      nextion.screen_hms_m_refresh ||
+      nextion.screen_hms_s_refresh ||
+      nextion.header_sd_icon_refresh ||
+      nextion.header_sensor_icon_refresh)
+  {
+    nextion.refresh = 0;
+    nextion.screen_hms_h_refresh = 0;
+    nextion.screen_hms_m_refresh = 0;
+    nextion.screen_hms_s_refresh = 0;
+    nextion.header_sd_icon_refresh = 0;
+    nextion.header_sensor_icon_refresh = 0;
+    { // hh
+      uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+      buff[8] = (rtc.hour_tmp % 100 / 10) + 0x30;
+      buff[9] = (rtc.hour_tmp % 10 / 1) + 0x30;
+      nextion_exec_cmd(buff, sizeof(buff));
+    } // mm
+    {
+      uint8_t buff[] = {0x74, 0x31, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+      buff[8] = (rtc.minute_tmp % 100 / 10) + 0x30;
+      buff[9] = (rtc.minute_tmp % 10 / 1) + 0x30;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+    { // ss
+      uint8_t buff[] = {0x74, 0x32, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+      buff[8] = (rtc.second_tmp % 100 / 10) + 0x30;
+      buff[9] = (rtc.second_tmp % 10 / 1) + 0x30;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+    { // rtc
+      uint8_t buff[] = {0x74, 0x36, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+      buff[8] = (rtc.hour_curr % 100 / 10) + 0x30;
+      buff[9] = (rtc.hour_curr % 10 / 1) + 0x30;
+      buff[11] = (rtc.minute_curr % 100 / 10) + 0x30;
+      buff[12] = (rtc.minute_curr % 10 / 1) + 0x30;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+    { // sensor
+      uint8_t buff[] = {0x70, 0x30, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x34, 0xff, 0xff, 0xff};
+      buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x36 : 0x37;
+      nextion_exec_cmd(buff, sizeof(buff));
+    }
+    { // sd
+      uint8_t buff[] = {0x70, 0x31, 0x2E, 0x70, 0x69, 0x63, 0x3D, 0x36, 0xff, 0xff, 0xff};
+      buff[7] = (sd_card.state) ? 0x38 : 0x39;
       nextion_exec_cmd(buff, sizeof(buff));
     }
   }
@@ -390,11 +590,19 @@ void nextion_evaluate_serial()
       {
         nextion_replace_screen(screen_history);
       }
+      else if (compare_array(nextion_realtime_clock, buffer_nextion))
+      {
+        nextion_replace_screen(screen_clock);
+      }
       break;
     case screen_history:
       if (compare_array(nextion_history_realtime, buffer_nextion))
       {
         nextion_replace_screen(screen_realtime);
+      }
+      else if (compare_array(nextion_history_clock, buffer_nextion))
+      {
+        nextion_replace_screen(screen_clock);
       }
       else if (compare_array(nextion_history_prev, buffer_nextion))
       {
@@ -412,6 +620,116 @@ void nextion_evaluate_serial()
         rtc_ds3231.adjust(DateTime(rtc.year_curr, rtc.month_curr, rtc.day_curr, rtc.hour_curr, 59, 55));
       }
 #endif
+      break;
+    case screen_clock:
+      if (compare_array(nextion_clock_realtime, buffer_nextion))
+      {
+        nextion_replace_screen(screen_realtime);
+      }
+      else if (compare_array(nextion_clock_history, buffer_nextion))
+      {
+        nextion_replace_screen(screen_history);
+      }
+      else if (compare_array(nextion_clock_ymd, buffer_nextion))
+      {
+        rtc.year_tmp = rtc.year_curr;
+        rtc.month_tmp = rtc.month_curr;
+        rtc.day_tmp = rtc.day_curr;
+        nextion_replace_screen(screen_ymd);
+      }
+      else if (compare_array(nextion_clock_hms, buffer_nextion))
+      {
+        rtc.hour_tmp = rtc.hour_curr;
+        rtc.minute_tmp = rtc.minute_curr;
+        rtc.second_tmp = rtc.second_curr;
+        nextion_replace_screen(screen_hms);
+      }
+      break;
+    case screen_ymd:
+      if (compare_array(nextion_ymd_prev, buffer_nextion))
+      {
+        rtc.year_curr = rtc.year_tmp;
+        rtc.month_curr = rtc.month_tmp;
+        rtc.day_curr = rtc.day_tmp;
+        rtc_ds3231.adjust(DateTime(rtc.year_curr, rtc.month_curr, rtc.day_curr, rtc.hour_curr, rtc.minute_curr, rtc.second_curr));
+        nextion_replace_screen(screen_clock);
+      }
+      else if (compare_array(nextion_ymd_y_sub, buffer_nextion))
+      {
+        rtc.year_tmp--;
+        nextion.screen_ymd_y_refresh = 1;
+      }
+      else if (compare_array(nextion_ymd_y_add, buffer_nextion))
+      {
+        rtc.year_tmp++;
+        nextion.screen_ymd_y_refresh = 1;
+      }
+      else if (compare_array(nextion_ymd_m_sub, buffer_nextion))
+      {
+        rtc.month_tmp = (rtc.month_tmp - 1 < 1) ? 1 : rtc.month_tmp - 1;
+        rtc.day_tmp = 1;
+        nextion.screen_ymd_m_refresh = 1;
+      }
+      else if (compare_array(nextion_ymd_m_add, buffer_nextion))
+      {
+        rtc.month_tmp = (rtc.month_tmp + 1 > 12) ? 12 : rtc.month_tmp + 1;
+        rtc.day_tmp = 1;
+        nextion.screen_ymd_m_refresh = 1;
+      }
+      else if (compare_array(nextion_ymd_d_sub, buffer_nextion))
+      {
+        rtc.day_tmp = (rtc.day_tmp - 1 < 1) ? 1 : rtc.day_tmp - 1;
+        nextion.screen_ymd_d_refresh = 1;
+      }
+      else if (compare_array(nextion_ymd_d_add, buffer_nextion))
+      {
+        int8_t num_days_tmp;
+        if (rtc.month_tmp == 2) num_days_tmp = 28;
+        else if (rtc.month_tmp == 4 || rtc.month_tmp == 6 || rtc.month_tmp == 9 || rtc.month_tmp == 11) num_days_tmp = 30;
+        else num_days_tmp = 31;
+        rtc.day_tmp = (rtc.day_tmp + 1 > num_days_tmp) ? num_days_tmp : rtc.day_tmp + 1;
+        nextion.screen_ymd_d_refresh = 1;
+      }
+      break;
+    case screen_hms:
+      if (compare_array(nextion_hms_prev, buffer_nextion))
+      {
+        rtc.hour_curr = rtc.hour_tmp;
+        rtc.minute_curr = rtc.minute_tmp;
+        rtc.second_curr = rtc.second_tmp;
+        rtc_ds3231.adjust(DateTime(rtc.year_curr, rtc.month_curr, rtc.day_curr, rtc.hour_curr, rtc.minute_curr, rtc.second_curr));
+        nextion_replace_screen(screen_clock);
+      }
+      else if (compare_array(nextion_hms_h_sub, buffer_nextion))
+      {
+        rtc.hour_tmp = (rtc.hour_tmp - 1 < 0) ? 0 : rtc.hour_tmp - 1;
+        nextion.screen_hms_h_refresh = 1;
+      }
+      else if (compare_array(nextion_hms_h_add, buffer_nextion))
+      {
+        rtc.hour_tmp = (rtc.hour_tmp + 1 > 23) ? 23 : rtc.hour_tmp + 1;
+        nextion.screen_hms_h_refresh = 1;
+      }
+      else if (compare_array(nextion_hms_m_sub, buffer_nextion))
+      {
+        rtc.minute_tmp = (rtc.minute_tmp - 1 < 0) ? 0 : rtc.minute_tmp - 1;
+        nextion.screen_hms_m_refresh = 1;
+      }
+      else if (compare_array(nextion_hms_m_add, buffer_nextion))
+      {
+        rtc.minute_tmp = (rtc.minute_tmp + 1 > 59) ? 59 : rtc.minute_tmp + 1;
+        nextion.screen_hms_m_refresh = 1;
+      }
+      else if (compare_array(nextion_hms_s_sub, buffer_nextion))
+      {
+        rtc.second_tmp = (rtc.second_tmp - 1 < 0) ? 0 : rtc.second_tmp - 1;
+        nextion.screen_hms_s_refresh = 1;
+      }
+      else if (compare_array(nextion_hms_s_add, buffer_nextion))
+      {
+        rtc.second_tmp = (rtc.second_tmp + 1 > 59) ? 59 : rtc.second_tmp + 1;
+        nextion.screen_hms_s_refresh = 1;
+      }
       break;
   }
 }
@@ -574,14 +892,14 @@ void sd_card_init()
         sd_card.tried_to_initialize = 1;
         sd_card.state = (SD.begin(sd_card.pin)) ? 1 : 0;
 
-        nextion.screen_realtime_sd_icon_refresh = 1;
+        nextion.header_sd_icon_refresh = 1;
       }
     }
     else
     {
       sd_card.tried_to_initialize = 0;
       sd_card.state = 0;
-      nextion.screen_realtime_sd_icon_refresh = 1;
+      nextion.header_sd_icon_refresh = 1;
     }
   }
 }
@@ -651,7 +969,7 @@ void setup()
   delay(2000);
   nextion_replace_screen(screen_realtime);
 
-  nextion.screen_realtime_sd_icon_refresh = 1;
+  nextion.header_sd_icon_refresh = 1;
 }
 
 
@@ -662,7 +980,8 @@ void loop()
   rtc_manager();
 
   sensor_manager();
-  nextion_manager();
 
   history_manager();
+
+  nextion_manager();
 }
