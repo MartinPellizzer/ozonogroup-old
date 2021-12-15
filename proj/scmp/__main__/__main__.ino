@@ -250,12 +250,13 @@ void nextion_manager()
   nextion_listen();
   if (nextion.screen == screen_splash) nextion_screen_splash_manager();
   else if (nextion.screen == screen_realtime) nextion_screen_realtime_manager(0);
-  else if (nextion.screen == screen_history) nextion_screen_history_manager();
-  else if (nextion.screen == screen_clock) nextion_screen_clock_manager();
-  else if (nextion.screen == screen_ymd) nextion_screen_ymd_manager();
-  else if (nextion.screen == screen_hms) nextion_screen_hms_manager();
+  else if (nextion.screen == screen_history) nextion_screen_history_manager(0);
+  else if (nextion.screen == screen_clock) nextion_screen_clock_manager(0);
+  else if (nextion.screen == screen_ymd) nextion_screen_ymd_manager(0);
+  else if (nextion.screen == screen_hms) nextion_screen_hms_manager(0);
 }
 
+// ;nextion header ------------------------------------------------------------------------
 void nextion_header_sensor_refresh()
 {
   nextion.header_sensor_icon_refresh = 0;
@@ -263,7 +264,6 @@ void nextion_header_sensor_refresh()
   buff[7] = (sensor1.is_communicating && sensor2.is_communicating) ? 0x36 : 0x37;
   nextion_exec_cmd(buff, sizeof(buff));
 }
-
 void nextion_header_sd_refresh()
 {
   nextion.header_sd_icon_refresh = 0;
@@ -271,7 +271,6 @@ void nextion_header_sd_refresh()
   buff[7] = (sd_card.state) ? 0x38 : 0x39;
   nextion_exec_cmd(buff, sizeof(buff));
 }
-
 void nextion_header_clock_refresh()
 {
   uint8_t buff[] = {0x68, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
@@ -343,19 +342,22 @@ void nextion_screen_realtime_manager(uint8_t refresh)
   if (refresh || nextion.header_clock_refresh) nextion_header_clock_refresh();
 }
 
-void nextion_screen_history_manager()
+void nextion_screen_history_manager(uint8_t refresh)
 {
-  if (nextion.refresh ||
-      history_update_screen ||
-      nextion.header_clock_refresh ||
-      nextion.header_sd_icon_refresh ||
-      nextion.header_sensor_icon_refresh)
+  if (refresh)
   {
-    nextion.refresh = 0;
+    nextion.screen = screen_history;
+    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x32, 0xff, 0xff, 0xff};
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+
+  if (refresh || nextion.header_sensor_icon_refresh) nextion_header_sensor_refresh();
+  if (refresh || nextion.header_sd_icon_refresh) nextion_header_sd_refresh();
+  if (refresh || nextion.header_clock_refresh) nextion_header_clock_refresh();
+
+  if (refresh || history_update_screen)
+  {
     history_update_screen = 0;
-    nextion.header_sd_icon_refresh = 0;
-    nextion.header_sensor_icon_refresh = 0;
-    nextion.header_clock_refresh = 0;
 
     /* TODO: Must change 6 to 60 */
 #define NUM_PAGES 6
@@ -390,28 +392,29 @@ void nextion_screen_history_manager()
       nextion_exec_cmd(buff, sizeof(buff));
     }
 
-    {
+    { // pagination
       uint8_t buff[] = {0x74, 0x37, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x50, 0x61, 0x67, 0x65, 0x20, 0x31, 0x2F, 0x36, 0x22, 0xff, 0xff, 0xff};
       buff[13] = (nextion.history_page + 1) + 0x30;
       buff[15] = (NUM_PAGES) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
-
-    nextion_header_clock_refresh();
-    nextion_header_sensor_refresh();
-    nextion_header_sd_refresh();
   }
 }
-void nextion_screen_clock_manager()
+void nextion_screen_clock_manager(uint8_t refresh)
 {
-  if (nextion.refresh ||
-      nextion.header_sd_icon_refresh ||
-      nextion.header_sensor_icon_refresh)
+  if (refresh)
   {
-    nextion.refresh = 0;
-    nextion.header_sd_icon_refresh = 0;
-    nextion.header_sensor_icon_refresh = 0;
+    nextion.screen = screen_clock;
+    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x33, 0xff, 0xff, 0xff};
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
 
+  if (refresh || nextion.header_sensor_icon_refresh) nextion_header_sensor_refresh();
+  if (refresh || nextion.header_sd_icon_refresh) nextion_header_sd_refresh();
+  if (refresh || nextion.header_clock_refresh) nextion_header_clock_refresh();
+
+  if (refresh)
+  {
     { // y/m/d
       uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x30, 0x30, 0x2F, 0x30, 0x30, 0x2F, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
       buff[8] = (rtc.year_curr % 10000 / 1000) + 0x30;
@@ -434,26 +437,29 @@ void nextion_screen_clock_manager()
       buff[15] = (rtc.second_curr % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
-    nextion_header_clock_refresh();
-    nextion_header_sensor_refresh();
-    nextion_header_sd_refresh();
   }
 }
-void nextion_screen_ymd_manager()
+void nextion_screen_ymd_manager(uint8_t refresh)
 {
-  if (nextion.refresh ||
+  if (refresh)
+  {
+    nextion.screen = screen_ymd;
+    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x34, 0xff, 0xff, 0xff};
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+
+  if (refresh || nextion.header_sensor_icon_refresh) nextion_header_sensor_refresh();
+  if (refresh || nextion.header_sd_icon_refresh) nextion_header_sd_refresh();
+  if (refresh || nextion.header_clock_refresh) nextion_header_clock_refresh();
+
+  if (refresh ||
       nextion.screen_ymd_y_refresh ||
       nextion.screen_ymd_m_refresh ||
-      nextion.screen_ymd_d_refresh ||
-      nextion.header_sd_icon_refresh ||
-      nextion.header_sensor_icon_refresh)
+      nextion.screen_ymd_d_refresh)
   {
-    nextion.refresh = 0;
     nextion.screen_ymd_y_refresh = 0;
     nextion.screen_ymd_m_refresh = 0;
     nextion.screen_ymd_d_refresh = 0;
-    nextion.header_sd_icon_refresh = 0;
-    nextion.header_sensor_icon_refresh = 0;
     { // yyyy
       uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
       buff[8] = (rtc.year_tmp % 10000 / 1000) + 0x30;
@@ -461,8 +467,8 @@ void nextion_screen_ymd_manager()
       buff[10] = (rtc.year_tmp % 100 / 10) + 0x30;
       buff[11] = (rtc.year_tmp % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
-    } // mm
-    {
+    }
+    { // mm
       uint8_t buff[] = {0x74, 0x31, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
       buff[8] = (rtc.month_tmp % 100 / 10) + 0x30;
       buff[9] = (rtc.month_tmp % 10 / 1) + 0x30;
@@ -474,26 +480,29 @@ void nextion_screen_ymd_manager()
       buff[9] = (rtc.day_tmp % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
-    nextion_header_clock_refresh();
-    nextion_header_sensor_refresh();
-    nextion_header_sd_refresh();
   }
 }
-void nextion_screen_hms_manager()
+void nextion_screen_hms_manager(uint8_t refresh)
 {
-  if (nextion.refresh ||
+  if (refresh)
+  {
+    nextion.screen = screen_hms;
+    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x35, 0xff, 0xff, 0xff};
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+
+  if (refresh || nextion.header_sensor_icon_refresh) nextion_header_sensor_refresh();
+  if (refresh || nextion.header_sd_icon_refresh) nextion_header_sd_refresh();
+  if (refresh || nextion.header_clock_refresh) nextion_header_clock_refresh();
+
+  if (refresh ||
       nextion.screen_hms_h_refresh ||
       nextion.screen_hms_m_refresh ||
-      nextion.screen_hms_s_refresh ||
-      nextion.header_sd_icon_refresh ||
-      nextion.header_sensor_icon_refresh)
+      nextion.screen_hms_s_refresh)
   {
-    nextion.refresh = 0;
     nextion.screen_hms_h_refresh = 0;
     nextion.screen_hms_m_refresh = 0;
     nextion.screen_hms_s_refresh = 0;
-    nextion.header_sd_icon_refresh = 0;
-    nextion.header_sensor_icon_refresh = 0;
     { // hh
       uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
       buff[8] = (rtc.hour_tmp % 100 / 10) + 0x30;
@@ -512,9 +521,6 @@ void nextion_screen_hms_manager()
       buff[9] = (rtc.second_tmp % 10 / 1) + 0x30;
       nextion_exec_cmd(buff, sizeof(buff));
     }
-    nextion_header_clock_refresh();
-    nextion_header_sensor_refresh();
-    nextion_header_sd_refresh();
   }
 }
 
@@ -544,21 +550,12 @@ void nextion_evaluate_serial()
   switch (nextion.screen)
   {
     case screen_realtime:
-      if (compare_array(nextion_realtime_history, buffer_nextion))
-      {
-        nextion_replace_screen(screen_history);
-      }
-      else if (compare_array(nextion_realtime_clock, buffer_nextion))
-      {
-        nextion_replace_screen(screen_clock);
-      }
+      if (compare_array(nextion_realtime_history, buffer_nextion)) nextion_screen_history_manager(1);
+      else if (compare_array(nextion_realtime_clock, buffer_nextion)) nextion_screen_clock_manager(1);
       break;
     case screen_history:
       if (compare_array(nextion_history_realtime, buffer_nextion)) nextion_screen_realtime_manager(1);
-      else if (compare_array(nextion_history_clock, buffer_nextion))
-      {
-        nextion_replace_screen(screen_clock);
-      }
+      else if (compare_array(nextion_history_clock, buffer_nextion)) nextion_screen_clock_manager(1);
       else if (compare_array(nextion_history_prev, buffer_nextion))
       {
         nextion.history_page = (nextion.history_page > 0) ? nextion.history_page - 1 : 0;
@@ -578,23 +575,20 @@ void nextion_evaluate_serial()
       break;
     case screen_clock:
       if (compare_array(nextion_clock_realtime, buffer_nextion)) nextion_screen_realtime_manager(1);
-      else if (compare_array(nextion_clock_history, buffer_nextion))
-      {
-        nextion_replace_screen(screen_history);
-      }
+      else if (compare_array(nextion_clock_history, buffer_nextion)) nextion_screen_history_manager(1);
       else if (compare_array(nextion_clock_ymd, buffer_nextion))
       {
         rtc.year_tmp = rtc.year_curr;
         rtc.month_tmp = rtc.month_curr;
         rtc.day_tmp = rtc.day_curr;
-        nextion_replace_screen(screen_ymd);
+        nextion_screen_ymd_manager(1);
       }
       else if (compare_array(nextion_clock_hms, buffer_nextion))
       {
         rtc.hour_tmp = rtc.hour_curr;
         rtc.minute_tmp = rtc.minute_curr;
         rtc.second_tmp = rtc.second_curr;
-        nextion_replace_screen(screen_hms);
+        nextion_screen_hms_manager(1);
       }
       break;
     case screen_ymd:
@@ -604,7 +598,7 @@ void nextion_evaluate_serial()
         rtc.month_curr = rtc.month_tmp;
         rtc.day_curr = rtc.day_tmp;
         rtc_ds3231.adjust(DateTime(rtc.year_curr, rtc.month_curr, rtc.day_curr, rtc.hour_curr, rtc.minute_curr, rtc.second_curr));
-        nextion_replace_screen(screen_clock);
+        nextion_screen_clock_manager(1);
       }
       else if (compare_array(nextion_ymd_y_sub, buffer_nextion))
       {
@@ -650,7 +644,7 @@ void nextion_evaluate_serial()
         rtc.minute_curr = rtc.minute_tmp;
         rtc.second_curr = rtc.second_tmp;
         rtc_ds3231.adjust(DateTime(rtc.year_curr, rtc.month_curr, rtc.day_curr, rtc.hour_curr, rtc.minute_curr, rtc.second_curr));
-        nextion_replace_screen(screen_clock);
+        nextion_screen_clock_manager(1);
       }
       else if (compare_array(nextion_hms_h_sub, buffer_nextion))
       {
