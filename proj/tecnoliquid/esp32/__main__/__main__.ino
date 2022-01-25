@@ -11,21 +11,6 @@ uint8_t buffer_nextion[BUFFER_SIZE];
 
 uint8_t nextion_hotspot[BUFFER_SIZE] = {101, 0, 2, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-void setup()
-{
-  /*
-    pinMode(19, OUTPUT);
-    pinMode(21, OUTPUT);
-    pinMode(22, OUTPUT);
-    pinMode(23, OUTPUT);
-
-    pinMode(17, INPUT);
-    pinMode(18, OUTPUT);
-  */
-
-  Serial.begin(9600);
-  Serial2.begin(9600);
-}
 
 
 void nextion_exec_cmd(uint8_t *buff, uint8_t buff_size)
@@ -69,42 +54,117 @@ void nextion_listen()
   }
 }
 
+
+#define RELAY1 25
+#define RELAY2 26
+#define RELAY3 27
+#define RELAY4 18
+#define RELAY5 19
+#define RELAY6 21
+#define RELAY7 22
+#define RELAY8 23
+
+#define IN1 32
+#define IN2 33
+
+void setup()
+{
+  pinMode(RELAY1, OUTPUT);
+  pinMode(RELAY2, OUTPUT);
+  pinMode(RELAY3, OUTPUT);
+  pinMode(RELAY4, OUTPUT);
+  pinMode(RELAY5, OUTPUT);
+  pinMode(RELAY6, OUTPUT);
+  pinMode(RELAY7, OUTPUT);
+  pinMode(RELAY8, OUTPUT);
+
+  pinMode(IN1, INPUT);
+  pinMode(IN2, INPUT);
+
+  Serial.begin(9600);
+  Serial2.begin(9600);
+}
+
+
+int relay_arr[8] = {RELAY1, RELAY2, RELAY3, RELAY4, RELAY5, RELAY6, RELAY7, RELAY8};
+
+void relay(int r1, int r2, int r3, int r4, int r5, int r6, int r7, int r8)
+{
+  digitalWrite(RELAY1, r1);
+  digitalWrite(RELAY2, r2);
+  digitalWrite(RELAY3, r3);
+  digitalWrite(RELAY4, r4);
+  digitalWrite(RELAY5, r5);
+  digitalWrite(RELAY6, r6);
+  digitalWrite(RELAY7, r7);
+  digitalWrite(RELAY8, r8);
+}
+
+uint32_t current_millis = 0;
+int relay_index = 0;
+
 void loop()
 {
+  if (digitalRead(IN1) == 1)
+  {
+    relay(0, 0, 0, 0, 0, 0, 0, 0);
+  }
+  else
+  {
+    if (millis() - current_millis > 1000)
+    {
+      current_millis = millis();
 
-  nextion_listen();
+      if (relay_index == 0) relay(1, 1, 1, 0, 0, 0, 0, 0);
+      else if (relay_index == 1) relay(0, 1, 1, 1, 0, 0, 0, 0);
+      else if (relay_index == 2) relay(1, 0, 1, 1, 0, 0, 0, 0);
+      else if (relay_index == 3) relay(1, 1, 0, 1, 0, 0, 0, 0);
 
+      relay_index++;
+      relay_index %= 4;
+    }
+  }
 
   /*
-    if(digitalRead(17) == HIGH)
+    relay(1, 1, 1, 0, 0, 0, 0, 0);
+    delay(1000);
+    relay(0, 1, 1, 1, 0, 0, 0, 0);
+    delay(1000);
+    relay(0, 0, 1, 1, 1, 0, 0, 0);
+    delay(1000);
+    relay(0, 0, 0, 1, 1, 1, 0, 0);
+    delay(1000);
+    relay(0, 0, 0, 0, 1, 1, 1, 0);
+    delay(1000);
+    relay(0, 0, 0, 0, 0, 1, 1, 1);
+    delay(1000);
+    relay(1, 0, 0, 0, 0, 0, 1, 1);
+    delay(1000);
+    relay(1, 1, 0, 0, 0, 0, 0, 1);
+    delay(1000);
+  */
+  /*
+    if (digitalRead(IN1) == LOW)
     {
-    digitalWrite(18, HIGH);
+    digitalWrite(RELAY1, HIGH);
+    digitalWrite(RELAY2, LOW);
+    digitalWrite(RELAY3, HIGH);
+    digitalWrite(RELAY4, LOW);
+    digitalWrite(RELAY5, HIGH);
+    digitalWrite(RELAY6, LOW);
+    digitalWrite(RELAY7, HIGH);
+    digitalWrite(RELAY8, LOW);
     }
     else
     {
-    digitalWrite(18, LOW);
+    digitalWrite(RELAY1, LOW);
+    digitalWrite(RELAY2, HIGH);
+    digitalWrite(RELAY3, LOW);
+    digitalWrite(RELAY4, HIGH);
+    digitalWrite(RELAY5, LOW);
+    digitalWrite(RELAY6, HIGH);
+    digitalWrite(RELAY7, LOW);
+    digitalWrite(RELAY8, HIGH);
     }
-  */
-  /*
-    digitalWrite(22, HIGH);
-    digitalWrite(23, LOW );
-    digitalWrite(21, LOW);
-    digitalWrite(19, LOW);
-    delay(3000);
-    digitalWrite(22, LOW );
-    digitalWrite(23, HIGH);
-    digitalWrite(21, LOW);
-    digitalWrite(19, LOW);
-    delay(3000);
-    digitalWrite(22, LOW );
-    digitalWrite(23, LOW);
-    digitalWrite(21, HIGH);
-    digitalWrite(19, LOW);
-    delay(3000);
-    digitalWrite(22, LOW );
-    digitalWrite(23, LOW);
-    digitalWrite(21, LOW);
-    digitalWrite(19, HIGH);
-    delay(3000);
   */
 }
