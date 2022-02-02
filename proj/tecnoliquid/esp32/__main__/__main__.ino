@@ -23,10 +23,20 @@ typedef struct nextion_t
 } nextion_t;
 nextion_t nextion = {};
 
+
+
+typedef struct core_t {
+  uint32_t millis_curr;
+  uint32_t seconds_prev;
+  uint32_t seconds_curr;
+  uint8_t cycle_prev;
+  uint8_t cycle_curr;
+} core_t;
+core_t core = {};
+
 typedef struct relay_t {
   int counter;
 } relay_t;
-
 relay_t relay_1 = {};
 relay_t relay_2 = {};
 relay_t relay_3 = {};
@@ -127,10 +137,6 @@ void relay(int r1, int r2, int r3, int r4)
   digitalWrite(RELAY4, r4);
 }
 
-uint32_t current_millis = 0;
-int relay_index = 0;
-uint32_t counter = 0;
-
 void nextion_goto_page_splash()
 {
   nextion.screen = screen_splash;
@@ -169,6 +175,15 @@ void setup()
 
 void nextion_draw_gen1(int val)
 {
+  // Print Val
+  {
+    uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+    buff[11] = (relay_1.counter % 100 / 10) + 0x30;
+    buff[12] = (relay_1.counter % 10 / 1) + 0x30;
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+
+  //Change Color
   if (val)
   {
     {
@@ -195,6 +210,15 @@ void nextion_draw_gen1(int val)
 
 void nextion_draw_gen2(int val)
 {
+  // Print Val
+  {
+    uint8_t buff[] = {0x74, 0x31, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+    buff[11] = (relay_2.counter % 100 / 10) + 0x30;
+    buff[12] = (relay_2.counter % 10 / 1) + 0x30;
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+
+  //Change Color
   if (val)
   {
     {
@@ -221,6 +245,15 @@ void nextion_draw_gen2(int val)
 
 void nextion_draw_gen3(int val)
 {
+  // Print Val
+  {
+    uint8_t buff[] = {0x74, 0x32, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+    buff[11] = (relay_3.counter % 100 / 10) + 0x30;
+    buff[12] = (relay_3.counter % 10 / 1) + 0x30;
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+
+  //Change Color
   if (val)
   {
     {
@@ -247,6 +280,15 @@ void nextion_draw_gen3(int val)
 
 void nextion_draw_gen4(int val)
 {
+  // Print Val
+  {
+    uint8_t buff[] = {0x74, 0x33, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+    buff[11] = (relay_4.counter % 100 / 10) + 0x30;
+    buff[12] = (relay_4.counter % 10 / 1) + 0x30;
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+
+  //Change Color
   if (val)
   {
     {
@@ -277,114 +319,91 @@ void nextion_draw_gen4(int val)
 void nextion_manager()
 {
   nextion_listen();
-  if(nextion.screen == screen_generators) nextion_screen_generators_manager();
+  if (nextion.screen == screen_generators) nextion_screen_generators_manager();
 }
 
 void nextion_screen_generators_manager()
 {
-  
+
 }
 
 void loop()
 {
   nextion_manager();
 
+  if (core.seconds_prev != core.seconds_curr)
+  {
+    core.seconds_prev = core.seconds_curr;
+
+    if (core.cycle_curr == 0)
+    {
+      relay_1.counter++;
+      relay_2.counter++;
+      relay_3.counter++;
+      relay_4.counter = 0;
+
+      nextion_draw_gen1(1);
+      nextion_draw_gen2(1);
+      nextion_draw_gen3(1);
+      nextion_draw_gen4(0);
+    }
+    else if (core.cycle_curr == 1)
+    {
+      relay_1.counter = 0;
+      relay_2.counter++;
+      relay_3.counter++;
+      relay_4.counter++;
+
+      nextion_draw_gen1(0);
+      nextion_draw_gen2(1);
+      nextion_draw_gen3(1);
+      nextion_draw_gen4(1);
+    }
+    else if (core.cycle_curr == 2)
+    {
+      relay_1.counter++;
+      relay_2.counter = 0;
+      relay_3.counter++;
+      relay_4.counter++;
+
+      nextion_draw_gen1(1);
+      nextion_draw_gen2(0);
+      nextion_draw_gen3(1);
+      nextion_draw_gen4(1);
+    }
+    else if (core.cycle_curr == 3)
+    {
+      relay_1.counter++;
+      relay_2.counter++;
+      relay_3.counter = 0;
+      relay_4.counter++;
+
+      nextion_draw_gen1(1);
+      nextion_draw_gen2(1);
+      nextion_draw_gen3(0);
+      nextion_draw_gen4(1);
+    }
+  }
+
   if (digitalRead(IN1) == 0)
   {
-    if (millis() - current_millis > 1000)
+    if (millis() - core.millis_curr > 1000)
     {
-      current_millis = millis();
-      counter++;
-
-      if (relay_index == 0)
-      {
-        relay_1.counter++;
-        relay_2.counter++;
-        relay_3.counter++;
-        relay_4.counter = 0;
-
-        nextion_draw_gen1(1);
-        nextion_draw_gen2(1);
-        nextion_draw_gen3(1);
-        nextion_draw_gen4(0);
-      }
-      else if (relay_index == 1)
-      {
-        relay_1.counter = 0;
-        relay_2.counter++;
-        relay_3.counter++;
-        relay_4.counter++;
-
-        nextion_draw_gen1(0);
-        nextion_draw_gen2(1);
-        nextion_draw_gen3(1);
-        nextion_draw_gen4(1);
-      }
-      else if (relay_index == 2)
-      {
-        relay_1.counter++;
-        relay_2.counter = 0;
-        relay_3.counter++;
-        relay_4.counter++;
-
-        nextion_draw_gen1(1);
-        nextion_draw_gen2(0);
-        nextion_draw_gen3(1);
-        nextion_draw_gen4(1);
-      }
-      else if (relay_index == 3)
-      {
-        relay_1.counter++;
-        relay_2.counter++;
-        relay_3.counter = 0;
-        relay_4.counter++;
-
-        nextion_draw_gen1(1);
-        nextion_draw_gen2(1);
-        nextion_draw_gen3(0);
-        nextion_draw_gen4(1);
-      }
-
-      {
-        uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-        buff[11] = (relay_1.counter % 100 / 10) + 0x30;
-        buff[12] = (relay_1.counter % 10 / 1) + 0x30;
-        nextion_exec_cmd(buff, sizeof(buff));
-      }
-
-      {
-        uint8_t buff[] = {0x74, 0x31, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-        buff[11] = (relay_2.counter % 100 / 10) + 0x30;
-        buff[12] = (relay_2.counter % 10 / 1) + 0x30;
-        nextion_exec_cmd(buff, sizeof(buff));
-      }
-
-      {
-        uint8_t buff[] = {0x74, 0x32, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-        buff[11] = (relay_3.counter % 100 / 10) + 0x30;
-        buff[12] = (relay_3.counter % 10 / 1) + 0x30;
-        nextion_exec_cmd(buff, sizeof(buff));
-      }
-
-      {
-        uint8_t buff[] = {0x74, 0x33, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-        buff[11] = (relay_4.counter % 100 / 10) + 0x30;
-        buff[12] = (relay_4.counter % 10 / 1) + 0x30;
-        nextion_exec_cmd(buff, sizeof(buff));
-      }
+      core.millis_curr = millis();
+      core.seconds_curr++; 
     }
 
-    if (counter >= 15)
+    if (core.seconds_curr >= 15)
     {
-      counter = 0;
-      relay_index++;
-      relay_index %= 4;
+      core.seconds_curr = 0;
+      core.cycle_curr++;
+      core.cycle_curr %= 4;
     }
 
-    if (relay_index == 0) relay(1, 1, 1, 0);
-    else if (relay_index == 1) relay(0, 1, 1, 1);
-    else if (relay_index == 2) relay(1, 0, 1, 1);
-    else if (relay_index == 3) relay(1, 1, 0, 1);
+    if (core.cycle_curr == 0) relay(1, 1, 1, 0);
+    else if (core.cycle_curr == 1) relay(0, 1, 1, 1);
+    else if (core.cycle_curr == 2) relay(1, 0, 1, 1);
+    else if (core.cycle_curr == 3) relay(1, 1, 0, 1);
   }
   else
   {
