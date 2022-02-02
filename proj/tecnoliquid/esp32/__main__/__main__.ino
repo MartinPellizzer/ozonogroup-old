@@ -45,6 +45,8 @@ relay_t relay_4 = {};
 enum screen {
   screen_splash,
   screen_generators,
+  screen_settings,
+  screen_info,
 };
 
 const uint8_t BUFFER_SIZE = 20;
@@ -76,36 +78,17 @@ bool compare_array(uint8_t *a, uint8_t *b)
 
 void nextion_evaluate_serial()
 {
-  if (compare_array(nextion_page1_icon1, buffer_nextion)) {
-  }
-  if (compare_array(nextion_page1_icon2, buffer_nextion)) {
-    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x32, 0xff, 0xff, 0xff};
-    nextion_exec_cmd(buff, sizeof(buff));
-  }
-  if (compare_array(nextion_page1_icon3, buffer_nextion)) {
-    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x33, 0xff, 0xff, 0xff};
-    nextion_exec_cmd(buff, sizeof(buff));
-  }
-  if (compare_array(nextion_page2_icon1, buffer_nextion)) {
-    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x31, 0xff, 0xff, 0xff};
-    nextion_exec_cmd(buff, sizeof(buff));
-  }
-  if (compare_array(nextion_page2_icon2, buffer_nextion)) {
-  }
-  if (compare_array(nextion_page2_icon3, buffer_nextion)) {
-    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x33, 0xff, 0xff, 0xff};
-    nextion_exec_cmd(buff, sizeof(buff));
-  }
-  if (compare_array(nextion_page3_icon1, buffer_nextion)) {
-    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x31, 0xff, 0xff, 0xff};
-    nextion_exec_cmd(buff, sizeof(buff));
-  }
-  if (compare_array(nextion_page3_icon2, buffer_nextion)) {
-    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x32, 0xff, 0xff, 0xff};
-    nextion_exec_cmd(buff, sizeof(buff));
-  }
-  if (compare_array(nextion_page3_icon3, buffer_nextion)) {
-  }
+  if (compare_array(nextion_page1_icon1, buffer_nextion)) {}
+  if (compare_array(nextion_page1_icon2, buffer_nextion)) nextion_goto_page_settings();
+  if (compare_array(nextion_page1_icon3, buffer_nextion)) nextion_goto_page_info();
+  
+  if (compare_array(nextion_page2_icon1, buffer_nextion)) nextion_goto_page_generators();
+  if (compare_array(nextion_page2_icon2, buffer_nextion)) {}
+  if (compare_array(nextion_page2_icon3, buffer_nextion)) nextion_goto_page_info();
+  
+  if (compare_array(nextion_page3_icon1, buffer_nextion)) nextion_goto_page_generators();
+  if (compare_array(nextion_page3_icon2, buffer_nextion)) nextion_goto_page_settings();
+  if (compare_array(nextion_page3_icon3, buffer_nextion)) {}
 }
 
 void nextion_listen()
@@ -137,6 +120,9 @@ void relay(int r1, int r2, int r3, int r4)
   digitalWrite(RELAY4, r4);
 }
 
+// -------------------------------
+// ----------- NEXTION -----------
+// -------------------------------
 void nextion_goto_page_splash()
 {
   nextion.screen = screen_splash;
@@ -148,6 +134,37 @@ void nextion_goto_page_generators()
   nextion.screen = screen_generators;
   uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x31, 0xff, 0xff, 0xff};
   nextion_exec_cmd(buff, sizeof(buff));
+}
+void nextion_goto_page_settings()
+{
+  nextion.screen = screen_settings;
+  uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x32, 0xff, 0xff, 0xff};
+  nextion_exec_cmd(buff, sizeof(buff));
+}
+void nextion_goto_page_info()
+{
+  nextion.screen = screen_info;
+  uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x33, 0xff, 0xff, 0xff};
+  nextion_exec_cmd(buff, sizeof(buff));
+}
+void nextion_manager()
+{
+  nextion_listen();
+  if (nextion.screen == screen_generators) nextion_screen_generators_manager();
+  else if (nextion.screen == screen_settings) nextion_screen_settings_manager();
+  else if (nextion.screen == screen_info) nextion_screen_info_manager();
+}
+void nextion_screen_generators_manager()
+{
+
+}
+void nextion_screen_settings_manager()
+{
+
+}
+void nextion_screen_info_manager()
+{
+
 }
 
 void setup()
@@ -167,6 +184,7 @@ void setup()
   Serial.begin(9600);
   Serial2.begin(9600);
 
+  delay(1000);
   nextion_goto_page_splash();
   delay(3000);
   nextion_goto_page_generators();
@@ -316,16 +334,7 @@ void nextion_draw_gen4(int val)
 
 
 
-void nextion_manager()
-{
-  nextion_listen();
-  if (nextion.screen == screen_generators) nextion_screen_generators_manager();
-}
 
-void nextion_screen_generators_manager()
-{
-
-}
 
 void loop()
 {
