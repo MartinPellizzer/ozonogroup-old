@@ -1,14 +1,28 @@
-#define RELAY1 25
-#define RELAY2 26
-#define RELAY3 27
-#define RELAY4 18
-#define RELAY5 19
-#define RELAY6 21
-#define RELAY7 22
-#define RELAY8 23
+typedef struct core_t
+{
+  int32_t millis_curr;
+  
+  int16_t seconds_prev;
+  int16_t seconds_curr;
+} core_t;
+core_t core = {};
 
-#define IN1 32
-#define IN2 33
+typedef struct relay_t
+{
+  int32_t seconds_prev;
+  int32_t seconds_curr;
+} relay_t;
+relay_t relay1 = {};
+relay_t relay2 = {};
+relay_t relay3 = {};
+relay_t relay4 = {};
+
+enum screens {
+  screen_splash,
+  screen_generators,
+  screen_settings,
+  screen_info,
+};
 
 typedef struct nextion_t
 {
@@ -18,79 +32,37 @@ typedef struct nextion_t
   uint8_t listen_buffer_counter;
   uint32_t listen_current_millis;
 
-  int8_t generator1_state_prev;
-  int8_t generator1_state_curr;
+  uint8_t relay1_update;
+  uint8_t relay2_update;
+  uint8_t relay3_update;
+  uint8_t relay4_update;
 } nextion_t;
 nextion_t nextion = {};
 
-
-
-typedef struct core_t {
-  uint32_t millis_curr;
-  uint32_t seconds_prev;
-  uint32_t seconds_curr;
-  uint8_t cycle_prev;
-  uint8_t cycle_curr;
-} core_t;
-core_t core = {};
-
-typedef struct relay_t {
-  int counter;
-} relay_t;
-relay_t relay_1 = {};
-relay_t relay_2 = {};
-relay_t relay_3 = {};
-relay_t relay_4 = {};
-
-enum screen {
-  screen_splash,
-  screen_generators,
-  screen_settings,
-  screen_info,
-};
-
 const uint8_t BUFFER_SIZE = 20;
 uint8_t buffer_nextion[BUFFER_SIZE];
+uint8_t nextion_page_generators_to_settings[BUFFER_SIZE] = {101, 1, 2, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_page_generators_to_info[BUFFER_SIZE] = {101, 1, 3, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-uint8_t nextion_hotspot[BUFFER_SIZE] = {101, 0, 2, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_page_settings_to_generators[BUFFER_SIZE] = {101, 2, 1, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_page_settings_to_info[BUFFER_SIZE] = {101, 2, 3, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-uint8_t nextion_page1_icon1[BUFFER_SIZE] = {101, 1, 1, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t nextion_page1_icon2[BUFFER_SIZE] = {101, 1, 2, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t nextion_page1_icon3[BUFFER_SIZE] = {101, 1, 3, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t nextion_page2_icon1[BUFFER_SIZE] = {101, 2, 1, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t nextion_page2_icon2[BUFFER_SIZE] = {101, 2, 2, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t nextion_page2_icon3[BUFFER_SIZE] = {101, 2, 3, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t nextion_page3_icon1[BUFFER_SIZE] = {101, 3, 1, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t nextion_page3_icon2[BUFFER_SIZE] = {101, 3, 2, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t nextion_page3_icon3[BUFFER_SIZE] = {101, 3, 3, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_page_info_to_generators[BUFFER_SIZE] = {101, 3, 1, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t nextion_page_info_to_settings[BUFFER_SIZE] = {101, 3, 2, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+// ----------------------------
+// ------- NEXTION CORE -------
+// ----------------------------
 void nextion_exec_cmd(uint8_t *buff, uint8_t buff_size)
 {
   for (uint8_t i = 0; i < buff_size; i++)
     Serial2.write(buff[i]);
 }
-
 bool compare_array(uint8_t *a, uint8_t *b)
 {
   for (uint8_t i = 0; i < BUFFER_SIZE; i++) if (a[i] != b[i]) return false;
   return true;
 }
-
-void nextion_evaluate_serial()
-{
-  if (compare_array(nextion_page1_icon1, buffer_nextion)) {}
-  if (compare_array(nextion_page1_icon2, buffer_nextion)) nextion_goto_page_settings();
-  if (compare_array(nextion_page1_icon3, buffer_nextion)) nextion_goto_page_info();
-  
-  if (compare_array(nextion_page2_icon1, buffer_nextion)) nextion_goto_page_generators();
-  if (compare_array(nextion_page2_icon2, buffer_nextion)) {}
-  if (compare_array(nextion_page2_icon3, buffer_nextion)) nextion_goto_page_info();
-  
-  if (compare_array(nextion_page3_icon1, buffer_nextion)) nextion_goto_page_generators();
-  if (compare_array(nextion_page3_icon2, buffer_nextion)) nextion_goto_page_settings();
-  if (compare_array(nextion_page3_icon3, buffer_nextion)) {}
-}
-
 void nextion_listen()
 {
   if (Serial2.available())
@@ -112,310 +84,179 @@ void nextion_listen()
   }
 }
 
-void relay(int r1, int r2, int r3, int r4)
+// -----------------------
+// ------- NEXTION -------
+// -----------------------
+void nextion_evaluate_serial()
 {
-  digitalWrite(RELAY1, r1);
-  digitalWrite(RELAY2, r2);
-  digitalWrite(RELAY3, r3);
-  digitalWrite(RELAY4, r4);
+  if (0) {}
+  else if (compare_array(buffer_nextion, nextion_page_generators_to_settings))
+  {
+    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x32, 0xff, 0xff, 0xff};
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+  else if (compare_array(buffer_nextion, nextion_page_generators_to_info))
+  {
+    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x33, 0xff, 0xff, 0xff};
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+  
+  else if (compare_array(buffer_nextion, nextion_page_settings_to_generators))
+  {
+    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x31, 0xff, 0xff, 0xff};
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+  else if (compare_array(buffer_nextion, nextion_page_settings_to_info))
+  {
+    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x33, 0xff, 0xff, 0xff};
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+  
+  else if (compare_array(buffer_nextion, nextion_page_info_to_generators))
+  {
+    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x31, 0xff, 0xff, 0xff};
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+  else if (compare_array(buffer_nextion, nextion_page_info_to_settings))
+  {
+    uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x32, 0xff, 0xff, 0xff};
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
 }
 
-// -------------------------------
-// ----------- NEXTION -----------
-// -------------------------------
-void nextion_goto_page_splash()
+void nextion_push_screen_splash()
 {
   nextion.screen = screen_splash;
   uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x30, 0xff, 0xff, 0xff};
   nextion_exec_cmd(buff, sizeof(buff));
 }
-void nextion_goto_page_generators()
+void nextion_push_screen_generators()
 {
   nextion.screen = screen_generators;
   uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x31, 0xff, 0xff, 0xff};
   nextion_exec_cmd(buff, sizeof(buff));
 }
-void nextion_goto_page_settings()
+void nextion_push_screen_settings()
 {
   nextion.screen = screen_settings;
   uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x32, 0xff, 0xff, 0xff};
   nextion_exec_cmd(buff, sizeof(buff));
 }
-void nextion_goto_page_info()
+void nextion_push_screen_info()
 {
   nextion.screen = screen_info;
   uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x33, 0xff, 0xff, 0xff};
   nextion_exec_cmd(buff, sizeof(buff));
 }
-void nextion_manager()
-{
-  nextion_listen();
-  if (nextion.screen == screen_generators) nextion_screen_generators_manager();
-  else if (nextion.screen == screen_settings) nextion_screen_settings_manager();
-  else if (nextion.screen == screen_info) nextion_screen_info_manager();
-}
-void nextion_screen_generators_manager()
-{
 
-}
-void nextion_screen_settings_manager()
+void nextion_screen_generator_update()
 {
-
-}
-void nextion_screen_info_manager()
-{
-
+  if(nextion.relay1_update)
+  {
+    nextion.relay1_update = 0;
+    uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+    buff[8] = (relay1.seconds_curr % 10000 / 1000) + 0x30;
+    buff[9] = (relay1.seconds_curr % 1000 / 100) + 0x30;
+    buff[11] = (relay1.seconds_curr % 100 / 10) + 0x30;
+    buff[12] = (relay1.seconds_curr % 10 / 1) + 0x30;
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+  if(nextion.relay2_update)
+  {
+    nextion.relay2_update = 0;
+    uint8_t buff[] = {0x74, 0x31, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+    buff[8] = (relay2.seconds_curr % 10000 / 1000) + 0x30;
+    buff[9] = (relay2.seconds_curr % 1000 / 100) + 0x30;
+    buff[11] = (relay2.seconds_curr % 100 / 10) + 0x30;
+    buff[12] = (relay2.seconds_curr % 10 / 1) + 0x30;
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+  if(nextion.relay3_update)
+  {
+    nextion.relay3_update = 0;
+    uint8_t buff[] = {0x74, 0x32, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+    buff[8] = (relay3.seconds_curr % 10000 / 1000) + 0x30;
+    buff[9] = (relay3.seconds_curr % 1000 / 100) + 0x30;
+    buff[11] = (relay3.seconds_curr % 100 / 10) + 0x30;
+    buff[12] = (relay3.seconds_curr % 10 / 1) + 0x30;
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
+  if(nextion.relay4_update)
+  {
+    nextion.relay4_update = 0;
+    uint8_t buff[] = {0x74, 0x33, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
+    buff[8] = (relay4.seconds_curr % 10000 / 1000) + 0x30;
+    buff[9] = (relay4.seconds_curr % 1000 / 100) + 0x30;
+    buff[11] = (relay4.seconds_curr % 100 / 10) + 0x30;
+    buff[12] = (relay4.seconds_curr % 10 / 1) + 0x30;
+    nextion_exec_cmd(buff, sizeof(buff));
+  }
 }
 
 void setup()
 {
-  pinMode(RELAY1, OUTPUT);
-  pinMode(RELAY2, OUTPUT);
-  pinMode(RELAY3, OUTPUT);
-  pinMode(RELAY4, OUTPUT);
-  pinMode(RELAY5, OUTPUT);
-  pinMode(RELAY6, OUTPUT);
-  pinMode(RELAY7, OUTPUT);
-  pinMode(RELAY8, OUTPUT);
-
-  pinMode(IN1, INPUT);
-  pinMode(IN2, INPUT);
-
   Serial.begin(9600);
   Serial2.begin(9600);
 
-  delay(1000);
-  nextion_goto_page_splash();
+  nextion_push_screen_splash();
   delay(3000);
-  nextion_goto_page_generators();
-
+  nextion_push_screen_generators();
 }
-
-void nextion_draw_gen1(int val)
-{
-  // Print Val
-  {
-    uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-    buff[11] = (relay_1.counter % 100 / 10) + 0x30;
-    buff[12] = (relay_1.counter % 10 / 1) + 0x30;
-    nextion_exec_cmd(buff, sizeof(buff));
-  }
-
-  //Change Color
-  if (val)
-  {
-    {
-      uint8_t buff[] = {0x74, 0x34, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    {
-      uint8_t buff[] = {0x74, 0x30, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-  }
-  else
-  {
-    {
-      uint8_t buff[] = {0x74, 0x34, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    {
-      uint8_t buff[] = {0x74, 0x30, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-  }
-}
-
-void nextion_draw_gen2(int val)
-{
-  // Print Val
-  {
-    uint8_t buff[] = {0x74, 0x31, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-    buff[11] = (relay_2.counter % 100 / 10) + 0x30;
-    buff[12] = (relay_2.counter % 10 / 1) + 0x30;
-    nextion_exec_cmd(buff, sizeof(buff));
-  }
-
-  //Change Color
-  if (val)
-  {
-    {
-      uint8_t buff[] = {0x74, 0x35, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    {
-      uint8_t buff[] = {0x74, 0x31, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-  }
-  else
-  {
-    {
-      uint8_t buff[] = {0x74, 0x35, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    {
-      uint8_t buff[] = {0x74, 0x31, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-  }
-}
-
-void nextion_draw_gen3(int val)
-{
-  // Print Val
-  {
-    uint8_t buff[] = {0x74, 0x32, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-    buff[11] = (relay_3.counter % 100 / 10) + 0x30;
-    buff[12] = (relay_3.counter % 10 / 1) + 0x30;
-    nextion_exec_cmd(buff, sizeof(buff));
-  }
-
-  //Change Color
-  if (val)
-  {
-    {
-      uint8_t buff[] = {0x74, 0x36, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    {
-      uint8_t buff[] = {0x74, 0x32, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-  }
-  else
-  {
-    {
-      uint8_t buff[] = {0x74, 0x36, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    {
-      uint8_t buff[] = {0x74, 0x32, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-  }
-}
-
-void nextion_draw_gen4(int val)
-{
-  // Print Val
-  {
-    uint8_t buff[] = {0x74, 0x33, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
-    buff[11] = (relay_4.counter % 100 / 10) + 0x30;
-    buff[12] = (relay_4.counter % 10 / 1) + 0x30;
-    nextion_exec_cmd(buff, sizeof(buff));
-  }
-
-  //Change Color
-  if (val)
-  {
-    {
-      uint8_t buff[] = {0x74, 0x37, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    {
-      uint8_t buff[] = {0x74, 0x33, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-  }
-  else
-  {
-    {
-      uint8_t buff[] = {0x74, 0x37, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-    {
-      uint8_t buff[] = {0x74, 0x33, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
-      nextion_exec_cmd(buff, sizeof(buff));
-    }
-  }
-}
-
-
-
-
-
 
 void loop()
 {
-  nextion_manager();
+  nextion_listen();
 
+  // update system seconds
+  if (millis() - core.millis_curr > 1000)
+  {
+    core.millis_curr = millis();
+    core.seconds_curr++;
+
+    Serial.println(core.seconds_curr);
+  }
+
+  // update relays reconds
   if (core.seconds_prev != core.seconds_curr)
   {
     core.seconds_prev = core.seconds_curr;
+    
+    relay1.seconds_curr++;
+    relay2.seconds_curr++;
+    relay3.seconds_curr++;
+    relay4.seconds_curr++;
 
-    if (core.cycle_curr == 0)
-    {
-      relay_1.counter++;
-      relay_2.counter++;
-      relay_3.counter++;
-      relay_4.counter = 0;
-
-      nextion_draw_gen1(1);
-      nextion_draw_gen2(1);
-      nextion_draw_gen3(1);
-      nextion_draw_gen4(0);
-    }
-    else if (core.cycle_curr == 1)
-    {
-      relay_1.counter = 0;
-      relay_2.counter++;
-      relay_3.counter++;
-      relay_4.counter++;
-
-      nextion_draw_gen1(0);
-      nextion_draw_gen2(1);
-      nextion_draw_gen3(1);
-      nextion_draw_gen4(1);
-    }
-    else if (core.cycle_curr == 2)
-    {
-      relay_1.counter++;
-      relay_2.counter = 0;
-      relay_3.counter++;
-      relay_4.counter++;
-
-      nextion_draw_gen1(1);
-      nextion_draw_gen2(0);
-      nextion_draw_gen3(1);
-      nextion_draw_gen4(1);
-    }
-    else if (core.cycle_curr == 3)
-    {
-      relay_1.counter++;
-      relay_2.counter++;
-      relay_3.counter = 0;
-      relay_4.counter++;
-
-      nextion_draw_gen1(1);
-      nextion_draw_gen2(1);
-      nextion_draw_gen3(0);
-      nextion_draw_gen4(1);
-    }
+    Serial.print(relay1.seconds_curr);
+    Serial.print(", ");
+    Serial.print(relay2.seconds_curr);
+    Serial.print(", ");
+    Serial.print(relay3.seconds_curr);
+    Serial.print(", ");
+    Serial.print(relay4.seconds_curr);
+    Serial.println();
   }
 
-  if (digitalRead(IN1) == 0)
+  // update nextion generators draw flags
+  if (relay1.seconds_prev != relay1.seconds_curr)
   {
-    if (millis() - core.millis_curr > 1000)
-    {
-      core.millis_curr = millis();
-      core.seconds_curr++; 
-    }
-
-    if (core.seconds_curr >= 15)
-    {
-      core.seconds_curr = 0;
-      core.cycle_curr++;
-      core.cycle_curr %= 4;
-    }
-
-    if (core.cycle_curr == 0) relay(1, 1, 1, 0);
-    else if (core.cycle_curr == 1) relay(0, 1, 1, 1);
-    else if (core.cycle_curr == 2) relay(1, 0, 1, 1);
-    else if (core.cycle_curr == 3) relay(1, 1, 0, 1);
+    relay1.seconds_prev = relay1.seconds_curr;
+    nextion.relay1_update = 1;
   }
-  else
+  if (relay2.seconds_prev != relay2.seconds_curr)
   {
-    relay(0, 0, 0, 0);
+    relay2.seconds_prev = relay2.seconds_curr;
+    nextion.relay2_update = 1;
   }
+  if (relay3.seconds_prev != relay3.seconds_curr)
+  {
+    relay3.seconds_prev = relay3.seconds_curr;
+    nextion.relay3_update = 1;
+  }
+  if (relay4.seconds_prev != relay4.seconds_curr)
+  {
+    relay4.seconds_prev = relay4.seconds_curr;
+    nextion.relay4_update = 1;
+  }
+
+  nextion_screen_generator_update();
 }
