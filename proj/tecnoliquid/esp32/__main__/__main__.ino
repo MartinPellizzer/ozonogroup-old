@@ -1,11 +1,29 @@
+// TODO IN1
+
+#define RELAY1 25
+#define RELAY2 26
+#define RELAY3 27
+#define RELAY4 18
+
+#define IN1 32
+
 typedef struct core_t
 {
   int32_t millis_curr;
-  
+
   int16_t seconds_prev;
   int16_t seconds_curr;
+
 } core_t;
 core_t core = {};
+
+typedef struct relays_t
+{
+  uint8_t update;
+  uint8_t index;
+  uint8_t counter;
+} relays_t;
+relays_t relays = {};
 
 typedef struct relay_t
 {
@@ -100,7 +118,7 @@ void nextion_evaluate_serial()
     uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x33, 0xff, 0xff, 0xff};
     nextion_exec_cmd(buff, sizeof(buff));
   }
-  
+
   else if (compare_array(buffer_nextion, nextion_page_settings_to_generators))
   {
     uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x31, 0xff, 0xff, 0xff};
@@ -111,7 +129,7 @@ void nextion_evaluate_serial()
     uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x33, 0xff, 0xff, 0xff};
     nextion_exec_cmd(buff, sizeof(buff));
   }
-  
+
   else if (compare_array(buffer_nextion, nextion_page_info_to_generators))
   {
     uint8_t buff[] = {0x70, 0x61, 0x67, 0x65, 0x20, 0x70, 0x61, 0x67, 0x65, 0x31, 0xff, 0xff, 0xff};
@@ -151,7 +169,7 @@ void nextion_push_screen_info()
 
 void nextion_screen_generator_update()
 {
-  if(nextion.relay1_update)
+  if (nextion.relay1_update)
   {
     nextion.relay1_update = 0;
     uint8_t buff[] = {0x74, 0x30, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
@@ -161,7 +179,7 @@ void nextion_screen_generator_update()
     buff[12] = (relay1.seconds_curr % 10 / 1) + 0x30;
     nextion_exec_cmd(buff, sizeof(buff));
   }
-  if(nextion.relay2_update)
+  if (nextion.relay2_update)
   {
     nextion.relay2_update = 0;
     uint8_t buff[] = {0x74, 0x31, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
@@ -171,7 +189,7 @@ void nextion_screen_generator_update()
     buff[12] = (relay2.seconds_curr % 10 / 1) + 0x30;
     nextion_exec_cmd(buff, sizeof(buff));
   }
-  if(nextion.relay3_update)
+  if (nextion.relay3_update)
   {
     nextion.relay3_update = 0;
     uint8_t buff[] = {0x74, 0x32, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
@@ -181,7 +199,7 @@ void nextion_screen_generator_update()
     buff[12] = (relay3.seconds_curr % 10 / 1) + 0x30;
     nextion_exec_cmd(buff, sizeof(buff));
   }
-  if(nextion.relay4_update)
+  if (nextion.relay4_update)
   {
     nextion.relay4_update = 0;
     uint8_t buff[] = {0x74, 0x33, 0x2E, 0x74, 0x78, 0x74, 0x3D, 0x22, 0x30, 0x30, 0x3A, 0x30, 0x30, 0x22, 0xff, 0xff, 0xff};
@@ -195,46 +213,143 @@ void nextion_screen_generator_update()
 
 void setup()
 {
+  pinMode(RELAY1, OUTPUT);
+  pinMode(RELAY2, OUTPUT);
+  pinMode(RELAY3, OUTPUT);
+  pinMode(RELAY4, OUTPUT);
+
+  pinMode(IN1, INPUT);
+
   Serial.begin(9600);
   Serial2.begin(9600);
 
+  delay(1000);
   nextion_push_screen_splash();
   delay(3000);
   nextion_push_screen_generators();
 }
 
-void loop()
+void core_manager()
 {
-  nextion_listen();
+  core_seconds_update();
+}
 
-  // update system seconds
+void core_seconds_update()
+{
   if (millis() - core.millis_curr > 1000)
   {
     core.millis_curr = millis();
     core.seconds_curr++;
 
-    Serial.println(core.seconds_curr);
+    relays.update = 1;
   }
+}
 
-  // update relays reconds
-  if (core.seconds_prev != core.seconds_curr)
+void relays_manager()
+{
+  relays_seconds_update();
+  relays_power_on();
+}
+
+void relays_seconds_update()
+{
+  if (relays.update)
   {
-    core.seconds_prev = core.seconds_curr;
+    relays.update = 0;
     
-    relay1.seconds_curr++;
-    relay2.seconds_curr++;
-    relay3.seconds_curr++;
-    relay4.seconds_curr++;
+    if (++relays.counter >= 15)
+    {
+      relays.counter = 0;
+      relays.index = ++relays.index % 4;
+    }
 
-    Serial.print(relay1.seconds_curr);
-    Serial.print(", ");
-    Serial.print(relay2.seconds_curr);
-    Serial.print(", ");
-    Serial.print(relay3.seconds_curr);
-    Serial.print(", ");
-    Serial.print(relay4.seconds_curr);
-    Serial.println();
+    if (relays.index == 0)
+    {
+      relay1.seconds_curr++;
+      relay2.seconds_curr++;
+      relay3.seconds_curr++;
+      relay4.seconds_curr = 0;
+    }
+    else if (relays.index == 1)
+    {
+      relay1.seconds_curr = 0;
+      relay2.seconds_curr++;
+      relay3.seconds_curr++;
+      relay4.seconds_curr++;
+    }
+    else if (relays.index == 2)
+    {
+      relay1.seconds_curr++;
+      relay2.seconds_curr = 0;
+      relay3.seconds_curr++;
+      relay4.seconds_curr++;
+    }
+    else if (relays.index == 3)
+    {
+      relay1.seconds_curr++;
+      relay2.seconds_curr++;
+      relay3.seconds_curr = 0;
+      relay4.seconds_curr++;
+    }
   }
+}
+
+void relays_power_on()
+{
+  if (relays.index == 0)
+  {
+    digitalWrite(RELAY1, HIGH);
+    digitalWrite(RELAY2, HIGH);
+    digitalWrite(RELAY3, HIGH);
+    digitalWrite(RELAY4, LOW);
+  }
+  else if (relays.index == 1)
+  {
+    digitalWrite(RELAY1, LOW);
+    digitalWrite(RELAY2, HIGH);
+    digitalWrite(RELAY3, HIGH);
+    digitalWrite(RELAY4, HIGH);
+  }
+  else if (relays.index == 2)
+  {
+    digitalWrite(RELAY1, HIGH);
+    digitalWrite(RELAY2, LOW);
+    digitalWrite(RELAY3, HIGH);
+    digitalWrite(RELAY4, HIGH);
+  }
+  else if (relays.index == 3)
+  {
+    digitalWrite(RELAY1, HIGH);
+    digitalWrite(RELAY2, HIGH);
+    digitalWrite(RELAY3, LOW);
+    digitalWrite(RELAY4, HIGH);
+  }
+}
+
+void relays_debug()
+{
+  Serial.print(relay1.seconds_curr);
+  Serial.print(", ");
+  Serial.print(relay2.seconds_curr);
+  Serial.print(", ");
+  Serial.print(relay3.seconds_curr);
+  Serial.print(", ");
+  Serial.print(relay4.seconds_curr);
+  Serial.println();
+}
+
+
+
+
+
+
+
+
+void loop()
+{
+  nextion_listen();
+  core_manager();
+  relays_manager();
 
   // update nextion generators draw flags
   if (relay1.seconds_prev != relay1.seconds_curr)
