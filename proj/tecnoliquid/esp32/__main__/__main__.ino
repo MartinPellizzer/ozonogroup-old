@@ -256,7 +256,12 @@ void relays_seconds_update()
   if (relays.update)
   {
     relays.update = 0;
-    
+
+    if (digitalRead(IN1) != 0)
+    {
+      return;
+    }
+
     if (++relays.counter >= 15)
     {
       relays.counter = 0;
