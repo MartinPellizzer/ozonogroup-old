@@ -1,5 +1,3 @@
-// TODO IN1
-
 #define RELAY1 25
 #define RELAY2 26
 #define RELAY3 27
@@ -211,29 +209,13 @@ void nextion_screen_generator_update()
   }
 }
 
-void setup()
-{
-  pinMode(RELAY1, OUTPUT);
-  pinMode(RELAY2, OUTPUT);
-  pinMode(RELAY3, OUTPUT);
-  pinMode(RELAY4, OUTPUT);
-
-  pinMode(IN1, INPUT);
-
-  Serial.begin(9600);
-  Serial2.begin(9600);
-
-  delay(1000);
-  nextion_push_screen_splash();
-  delay(3000);
-  nextion_push_screen_generators();
-}
-
+// -----------------------
+// --------- CORE --------
+// -----------------------
 void core_manager()
 {
   core_seconds_update();
 }
-
 void core_seconds_update()
 {
   if (millis() - core.millis_curr > 1000)
@@ -245,60 +227,80 @@ void core_seconds_update()
   }
 }
 
+// -----------------------
+// -------- RELAYS -------
+// -----------------------
 void relays_manager()
 {
   relays_seconds_update();
   relays_power_on();
 }
-
 void relays_seconds_update()
 {
   if (relays.update)
   {
     relays.update = 0;
 
-    if (digitalRead(IN1) != 0)
+    if (digitalRead(IN1) == 0)
     {
-      return;
-    }
+      if (++relays.counter >= 15)
+      {
+        relays.counter = 0;
+        relays.index = ++relays.index % 4;
+      }
 
-    if (++relays.counter >= 15)
-    {
-      relays.counter = 0;
-      relays.index = ++relays.index % 4;
-    }
-
-    if (relays.index == 0)
-    {
-      relay1.seconds_curr++;
-      relay2.seconds_curr++;
-      relay3.seconds_curr++;
-      relay4.seconds_curr = 0;
-    }
-    else if (relays.index == 1)
-    {
-      relay1.seconds_curr = 0;
-      relay2.seconds_curr++;
-      relay3.seconds_curr++;
-      relay4.seconds_curr++;
-    }
-    else if (relays.index == 2)
-    {
-      relay1.seconds_curr++;
-      relay2.seconds_curr = 0;
-      relay3.seconds_curr++;
-      relay4.seconds_curr++;
-    }
-    else if (relays.index == 3)
-    {
-      relay1.seconds_curr++;
-      relay2.seconds_curr++;
-      relay3.seconds_curr = 0;
-      relay4.seconds_curr++;
+      if (relays.index == 0)
+      {
+        relay1.seconds_curr++;
+        relay2.seconds_curr++;
+        relay3.seconds_curr++;
+        relay4.seconds_curr = 0;
+      }
+      else if (relays.index == 1)
+      {
+        relay1.seconds_curr = 0;
+        relay2.seconds_curr++;
+        relay3.seconds_curr++;
+        relay4.seconds_curr++;
+      }
+      else if (relays.index == 2)
+      {
+        relay1.seconds_curr++;
+        relay2.seconds_curr = 0;
+        relay3.seconds_curr++;
+        relay4.seconds_curr++;
+      }
+      else if (relays.index == 3)
+      {
+        relay1.seconds_curr++;
+        relay2.seconds_curr++;
+        relay3.seconds_curr = 0;
+        relay4.seconds_curr++;
+      }
     }
   }
-}
 
+  if (relay1.seconds_prev != relay1.seconds_curr)
+  {
+    relay1.seconds_prev = relay1.seconds_curr;
+    nextion.relay1_update = 1;
+  }
+  if (relay2.seconds_prev != relay2.seconds_curr)
+  {
+    relay2.seconds_prev = relay2.seconds_curr;
+    nextion.relay2_update = 1;
+  }
+  if (relay3.seconds_prev != relay3.seconds_curr)
+  {
+    relay3.seconds_prev = relay3.seconds_curr;
+    nextion.relay3_update = 1;
+  }
+  if (relay4.seconds_prev != relay4.seconds_curr)
+  {
+    relay4.seconds_prev = relay4.seconds_curr;
+    nextion.relay4_update = 1;
+  }
+}
 void relays_power_on()
 {
   if (relays.index == 0)
@@ -330,7 +332,6 @@ void relays_power_on()
     digitalWrite(RELAY4, HIGH);
   }
 }
-
 void relays_debug()
 {
   Serial.print(relay1.seconds_curr);
@@ -345,38 +346,33 @@ void relays_debug()
 
 
 
+void setup()
+{
+  pinMode(RELAY1, OUTPUT);
+  pinMode(RELAY2, OUTPUT);
+  pinMode(RELAY3, OUTPUT);
+  pinMode(RELAY4, OUTPUT);
 
+  pinMode(IN1, INPUT);
 
+  Serial.begin(9600);
+  Serial2.begin(9600);
 
+  delay(1000);
+  nextion_push_screen_splash();
+  delay(3000);
+  nextion_push_screen_generators();
+}
 
+void nextion_manager()
+{
+  nextion_listen();
+  nextion_screen_generator_update();
+}
 
 void loop()
 {
-  nextion_listen();
   core_manager();
   relays_manager();
-
-  // update nextion generators draw flags
-  if (relay1.seconds_prev != relay1.seconds_curr)
-  {
-    relay1.seconds_prev = relay1.seconds_curr;
-    nextion.relay1_update = 1;
-  }
-  if (relay2.seconds_prev != relay2.seconds_curr)
-  {
-    relay2.seconds_prev = relay2.seconds_curr;
-    nextion.relay2_update = 1;
-  }
-  if (relay3.seconds_prev != relay3.seconds_curr)
-  {
-    relay3.seconds_prev = relay3.seconds_curr;
-    nextion.relay3_update = 1;
-  }
-  if (relay4.seconds_prev != relay4.seconds_curr)
-  {
-    relay4.seconds_prev = relay4.seconds_curr;
-    nextion.relay4_update = 1;
-  }
-
-  nextion_screen_generator_update();
+  nextion_manager();
 }
