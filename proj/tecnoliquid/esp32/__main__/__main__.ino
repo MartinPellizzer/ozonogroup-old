@@ -16,6 +16,13 @@ typedef struct core_t
 } core_t;
 core_t core = {};
 
+typedef struct din_t
+{
+  int8_t state_curr = 0;
+  int8_t state_prev = -1;
+} din_t;
+din_t din1;
+
 typedef struct relays_t
 {
   uint8_t update;
@@ -34,12 +41,12 @@ relay_t relay2 = {};
 relay_t relay3 = {};
 relay_t relay4 = {};
 
-typedef struct digital_input_t
+typedef struct oxygen_t
 {
-  int8_t state_curr;
-  int8_t state_prev;
-} digital_input_t;
-digital_input_t din1 = {};
+  int8_t state_curr = 0;
+  int8_t state_prev = -1;
+} oxygen_t;
+oxygen_t oxygen;
 
 enum screens {
   screen_splash,
@@ -309,6 +316,7 @@ void relays_seconds_update()
     nextion.relay4_update = 1;
   }
 }
+
 void relays_power_on()
 {
   if (digitalRead(IN1) == 0)
@@ -365,25 +373,18 @@ void relays_debug()
 // -----------------------
 // -------- OXYGEN -------
 // -----------------------
-int8_t oxygen_state_curr = 0;
-int8_t oxygen_state_prev = -1;
 void oxygen_manager()
 {
   oxygen_power();
 }
 void oxygen_power()
 {
-  if (oxygen_state_prev != oxygen_state_curr)
+  if (oxygen.state_prev != oxygen.state_curr)
   {
-    oxygen_state_prev = oxygen_state_curr;
-    if (oxygen_state_curr)
-    {
-      digitalWrite(RELAY5, HIGH);
-    }
-    else
-    {
-      digitalWrite(RELAY5, LOW);
-    }
+    oxygen.state_prev = oxygen.state_curr;
+    
+    if (oxygen.state_curr) digitalWrite(RELAY5, HIGH);
+    else digitalWrite(RELAY5, LOW);
   }
 }
 
@@ -398,8 +399,16 @@ void input_manager()
   {
     din1.state_prev = din1.state_curr;
 
-    if (din1.state_curr) oxygen_state_curr = 0;
-    else oxygen_state_curr = 1;
+    if (din1.state_curr)
+    {
+      oxygen.state_curr = 0;
+      relays_state_curr = 0;
+    }
+    else
+    {
+      oxygen.state_curr = 1;
+      relays_state_curr = 1;
+    }
   }
 }
 
