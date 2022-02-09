@@ -3,6 +3,8 @@
 #define RELAY3 27
 #define RELAY4 18
 
+#define RELAY5 19
+
 #define IN1 32
 
 typedef struct core_t
@@ -11,7 +13,6 @@ typedef struct core_t
 
   int16_t seconds_prev;
   int16_t seconds_curr;
-
 } core_t;
 core_t core = {};
 
@@ -32,6 +33,13 @@ relay_t relay1 = {};
 relay_t relay2 = {};
 relay_t relay3 = {};
 relay_t relay4 = {};
+
+typedef struct digital_input_t
+{
+  int8_t state_curr;
+  int8_t state_prev;
+} digital_input_t;
+digital_input_t din1 = {};
 
 enum screens {
   screen_splash,
@@ -303,33 +311,43 @@ void relays_seconds_update()
 }
 void relays_power_on()
 {
-  if (relays.index == 0)
+  if (digitalRead(IN1) == 0)
   {
-    digitalWrite(RELAY1, HIGH);
-    digitalWrite(RELAY2, HIGH);
-    digitalWrite(RELAY3, HIGH);
-    digitalWrite(RELAY4, LOW);
+    if (relays.index == 0)
+    {
+      digitalWrite(RELAY1, HIGH);
+      digitalWrite(RELAY2, HIGH);
+      digitalWrite(RELAY3, HIGH);
+      digitalWrite(RELAY4, LOW);
+    }
+    else if (relays.index == 1)
+    {
+      digitalWrite(RELAY1, LOW);
+      digitalWrite(RELAY2, HIGH);
+      digitalWrite(RELAY3, HIGH);
+      digitalWrite(RELAY4, HIGH);
+    }
+    else if (relays.index == 2)
+    {
+      digitalWrite(RELAY1, HIGH);
+      digitalWrite(RELAY2, LOW);
+      digitalWrite(RELAY3, HIGH);
+      digitalWrite(RELAY4, HIGH);
+    }
+    else if (relays.index == 3)
+    {
+      digitalWrite(RELAY1, HIGH);
+      digitalWrite(RELAY2, HIGH);
+      digitalWrite(RELAY3, LOW);
+      digitalWrite(RELAY4, HIGH);
+    }
   }
-  else if (relays.index == 1)
+  else
   {
     digitalWrite(RELAY1, LOW);
-    digitalWrite(RELAY2, HIGH);
-    digitalWrite(RELAY3, HIGH);
-    digitalWrite(RELAY4, HIGH);
-  }
-  else if (relays.index == 2)
-  {
-    digitalWrite(RELAY1, HIGH);
     digitalWrite(RELAY2, LOW);
-    digitalWrite(RELAY3, HIGH);
-    digitalWrite(RELAY4, HIGH);
-  }
-  else if (relays.index == 3)
-  {
-    digitalWrite(RELAY1, HIGH);
-    digitalWrite(RELAY2, HIGH);
     digitalWrite(RELAY3, LOW);
-    digitalWrite(RELAY4, HIGH);
+    digitalWrite(RELAY4, LOW);
   }
 }
 void relays_debug()
@@ -344,7 +362,46 @@ void relays_debug()
   Serial.println();
 }
 
+// -----------------------
+// -------- OXYGEN -------
+// -----------------------
+int8_t oxygen_state_curr = 0;
+int8_t oxygen_state_prev = -1;
+void oxygen_manager()
+{
+  oxygen_power();
+}
+void oxygen_power()
+{
+  if (oxygen_state_prev != oxygen_state_curr)
+  {
+    oxygen_state_prev = oxygen_state_curr;
+    if (oxygen_state_curr)
+    {
+      digitalWrite(RELAY5, HIGH);
+    }
+    else
+    {
+      digitalWrite(RELAY5, LOW);
+    }
+  }
+}
 
+// -----------------------
+// -------- INPUT --------
+// -----------------------
+void input_manager()
+{
+  din1.state_curr = digitalRead(IN1);
+
+  if (din1.state_prev != din1.state_curr)
+  {
+    din1.state_prev = din1.state_curr;
+
+    if (din1.state_curr) oxygen_state_curr = 0;
+    else oxygen_state_curr = 1;
+  }
+}
 
 void setup()
 {
@@ -352,6 +409,8 @@ void setup()
   pinMode(RELAY2, OUTPUT);
   pinMode(RELAY3, OUTPUT);
   pinMode(RELAY4, OUTPUT);
+
+  pinMode(RELAY5, OUTPUT);
 
   pinMode(IN1, INPUT);
 
@@ -373,6 +432,8 @@ void nextion_manager()
 void loop()
 {
   core_manager();
+  input_manager();
+  oxygen_manager();
   relays_manager();
   nextion_manager();
 }
