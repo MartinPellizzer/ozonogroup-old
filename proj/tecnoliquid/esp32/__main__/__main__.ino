@@ -82,7 +82,7 @@ uint8_t nextion_page_info_to_generators[BUFFER_SIZE] = {101, 3, 1, 1, 255, 255, 
 uint8_t nextion_page_info_to_settings[BUFFER_SIZE] = {101, 3, 2, 1, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // ----------------------------
-// ------- NEXTION CORE -------
+// ------ NEXTION UTILS -------
 // ----------------------------
 void nextion_exec_cmd(uint8_t *buff, uint8_t buff_size)
 {
@@ -118,6 +118,12 @@ void nextion_listen()
 // -----------------------
 // ------- NEXTION -------
 // -----------------------
+void nextion_manager()
+{
+  nextion_listen();
+  nextion_screen_generator_update();
+}
+
 void nextion_evaluate_serial()
 {
   if (0) {}
@@ -245,6 +251,7 @@ void core_seconds_update()
 // -----------------------
 // -------- RELAYS -------
 // -----------------------
+uint32_t millis_delayed_start_curr = 0;
 void relays_manager()
 {
   relays_seconds_update();
@@ -258,39 +265,42 @@ void relays_seconds_update()
 
     if (digitalRead(IN1) == 0)
     {
-      if (++relays.counter >= 15)
+      if (millis() - millis_delayed_start_curr > 3000)
       {
-        relays.counter = 0;
-        relays.index = ++relays.index % 4;
-      }
+        if (++relays.counter >= 15)
+        {
+          relays.counter = 0;
+          relays.index = ++relays.index % 4;
+        }
 
-      if (relays.index == 0)
-      {
-        relay1.seconds_curr++;
-        relay2.seconds_curr++;
-        relay3.seconds_curr++;
-        relay4.seconds_curr = 0;
-      }
-      else if (relays.index == 1)
-      {
-        relay1.seconds_curr = 0;
-        relay2.seconds_curr++;
-        relay3.seconds_curr++;
-        relay4.seconds_curr++;
-      }
-      else if (relays.index == 2)
-      {
-        relay1.seconds_curr++;
-        relay2.seconds_curr = 0;
-        relay3.seconds_curr++;
-        relay4.seconds_curr++;
-      }
-      else if (relays.index == 3)
-      {
-        relay1.seconds_curr++;
-        relay2.seconds_curr++;
-        relay3.seconds_curr = 0;
-        relay4.seconds_curr++;
+        if (relays.index == 0)
+        {
+          relay1.seconds_curr++;
+          relay2.seconds_curr++;
+          relay3.seconds_curr++;
+          relay4.seconds_curr = 0;
+        }
+        else if (relays.index == 1)
+        {
+          relay1.seconds_curr = 0;
+          relay2.seconds_curr++;
+          relay3.seconds_curr++;
+          relay4.seconds_curr++;
+        }
+        else if (relays.index == 2)
+        {
+          relay1.seconds_curr++;
+          relay2.seconds_curr = 0;
+          relay3.seconds_curr++;
+          relay4.seconds_curr++;
+        }
+        else if (relays.index == 3)
+        {
+          relay1.seconds_curr++;
+          relay2.seconds_curr++;
+          relay3.seconds_curr = 0;
+          relay4.seconds_curr++;
+        }
       }
     }
   }
@@ -321,33 +331,36 @@ void relays_power_on()
 {
   if (digitalRead(IN1) == 0)
   {
-    if (relays.index == 0)
+    if (millis() - millis_delayed_start_curr > 3000)
     {
-      digitalWrite(RELAY1, HIGH);
-      digitalWrite(RELAY2, HIGH);
-      digitalWrite(RELAY3, HIGH);
-      digitalWrite(RELAY4, LOW);
-    }
-    else if (relays.index == 1)
-    {
-      digitalWrite(RELAY1, LOW);
-      digitalWrite(RELAY2, HIGH);
-      digitalWrite(RELAY3, HIGH);
-      digitalWrite(RELAY4, HIGH);
-    }
-    else if (relays.index == 2)
-    {
-      digitalWrite(RELAY1, HIGH);
-      digitalWrite(RELAY2, LOW);
-      digitalWrite(RELAY3, HIGH);
-      digitalWrite(RELAY4, HIGH);
-    }
-    else if (relays.index == 3)
-    {
-      digitalWrite(RELAY1, HIGH);
-      digitalWrite(RELAY2, HIGH);
-      digitalWrite(RELAY3, LOW);
-      digitalWrite(RELAY4, HIGH);
+      if (relays.index == 0)
+      {
+        digitalWrite(RELAY1, HIGH);
+        digitalWrite(RELAY2, HIGH);
+        digitalWrite(RELAY3, HIGH);
+        digitalWrite(RELAY4, LOW);
+      }
+      else if (relays.index == 1)
+      {
+        digitalWrite(RELAY1, LOW);
+        digitalWrite(RELAY2, HIGH);
+        digitalWrite(RELAY3, HIGH);
+        digitalWrite(RELAY4, HIGH);
+      }
+      else if (relays.index == 2)
+      {
+        digitalWrite(RELAY1, HIGH);
+        digitalWrite(RELAY2, LOW);
+        digitalWrite(RELAY3, HIGH);
+        digitalWrite(RELAY4, HIGH);
+      }
+      else if (relays.index == 3)
+      {
+        digitalWrite(RELAY1, HIGH);
+        digitalWrite(RELAY2, HIGH);
+        digitalWrite(RELAY3, LOW);
+        digitalWrite(RELAY4, HIGH);
+      }
     }
   }
   else
@@ -375,17 +388,8 @@ void relays_debug()
 // -----------------------
 void oxygen_manager()
 {
-  oxygen_power();
-}
-void oxygen_power()
-{
-  if (oxygen.state_prev != oxygen.state_curr)
-  {
-    oxygen.state_prev = oxygen.state_curr;
-    
-    if (oxygen.state_curr) digitalWrite(RELAY5, HIGH);
-    else digitalWrite(RELAY5, LOW);
-  }
+  if (oxygen.state_curr) digitalWrite(RELAY5, HIGH);
+  else digitalWrite(RELAY5, LOW);
 }
 
 // -----------------------
@@ -398,16 +402,16 @@ void input_manager()
   if (din1.state_prev != din1.state_curr)
   {
     din1.state_prev = din1.state_curr;
+      Serial.println(din1.state_curr);
 
-    if (din1.state_curr)
+    if (!din1.state_curr)
     {
-      oxygen.state_curr = 0;
-      relays_state_curr = 0;
+      oxygen.state_curr = 1;
+      millis_delayed_start_curr = millis();
     }
     else
     {
-      oxygen.state_curr = 1;
-      relays_state_curr = 1;
+      oxygen.state_curr = 0;
     }
   }
 }
@@ -430,12 +434,6 @@ void setup()
   nextion_push_screen_splash();
   delay(3000);
   nextion_push_screen_generators();
-}
-
-void nextion_manager()
-{
-  nextion_listen();
-  nextion_screen_generator_update();
 }
 
 void loop()
