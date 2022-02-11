@@ -1,6 +1,12 @@
 // TODO: delay execution of generators
 
-define RELAY1 25
+int8_t gen_state = 0;
+
+
+int8_t countdown_flag = 1;
+uint32_t countdown_timer = 0;
+
+#define RELAY1 25
 #define RELAY2 26
 #define RELAY3 27
 #define RELAY4 18
@@ -20,7 +26,7 @@ core_t core = {};
 
 typedef struct din_t
 {
-  int8_t state_curr = 0;
+  int8_t state = 0;
   int8_t state_prev = -1;
 } din_t;
 din_t din1;
@@ -383,13 +389,33 @@ void oxygen_manager()
 // -----------------------
 void input_manager()
 {
-  din1.state_curr = digitalRead(IN1);
+  din1.state = digitalRead(IN1);
 
-  if (din1.state_prev != din1.state_curr)
+  if (din1.state_prev != din1.state)
   {
-    din1.state_prev = din1.state_curr;
+    din1.state_prev = din1.state;
 
-    // TODO
+    if (din1.state)
+    {
+      countdown_flag = 1;
+      countdown_timer = millis();
+    }
+    else
+    {
+      countdown_flag = 0;
+    }
+  }
+
+  if (countdown_flag)
+  {
+    if (millis() - countdown_timer > 3000)
+    {
+      gen_state = 1;
+    }
+  }
+  else
+  {
+    gen_state = 0;
   }
 }
 
