@@ -1,7 +1,7 @@
-// TODO: delay execution of generators
+// TODO: refactor for god sake
+
 
 int8_t gen_state = 0;
-
 
 int8_t countdown_flag = 1;
 uint32_t countdown_timer = 0;
@@ -200,6 +200,29 @@ void nextion_screen_generator_update()
     buff[11] = (gen_1.seconds_curr % 100 / 10) + 0x30;
     buff[12] = (gen_1.seconds_curr % 10 / 1) + 0x30;
     nextion_exec_cmd(buff, sizeof(buff));
+
+    if (relays.index != 1)
+    {
+      {
+        uint8_t buff[] = {0x74, 0x34, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+      {
+        uint8_t buff[] = {0x74, 0x30, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+    }
+    else
+    {
+      {
+        uint8_t buff[] = {0x74, 0x34, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+      {
+        uint8_t buff[] = {0x74, 0x30, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+    }
   }
   if (nextion.relay2_update)
   {
@@ -210,6 +233,29 @@ void nextion_screen_generator_update()
     buff[11] = (gen_2.seconds_curr % 100 / 10) + 0x30;
     buff[12] = (gen_2.seconds_curr % 10 / 1) + 0x30;
     nextion_exec_cmd(buff, sizeof(buff));
+
+    if (relays.index != 2)
+    {
+      {
+        uint8_t buff[] = {0x74, 0x35, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+      {
+        uint8_t buff[] = {0x74, 0x31, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+    }
+    else
+    {
+      {
+        uint8_t buff[] = {0x74, 0x35, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+      {
+        uint8_t buff[] = {0x74, 0x31, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+    }
   }
   if (nextion.relay3_update)
   {
@@ -220,6 +266,29 @@ void nextion_screen_generator_update()
     buff[11] = (gen_3.seconds_curr % 100 / 10) + 0x30;
     buff[12] = (gen_3.seconds_curr % 10 / 1) + 0x30;
     nextion_exec_cmd(buff, sizeof(buff));
+    
+    if (relays.index != 3)
+    {
+      {
+        uint8_t buff[] = {0x74, 0x36, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+      {
+        uint8_t buff[] = {0x74, 0x32, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+    }
+    else
+    {
+      {
+        uint8_t buff[] = {0x74, 0x36, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+      {
+        uint8_t buff[] = {0x74, 0x32, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+    }
   }
   if (nextion.relay4_update)
   {
@@ -230,6 +299,29 @@ void nextion_screen_generator_update()
     buff[11] = (gen_4.seconds_curr % 100 / 10) + 0x30;
     buff[12] = (gen_4.seconds_curr % 10 / 1) + 0x30;
     nextion_exec_cmd(buff, sizeof(buff));
+
+    if (relays.index != 0)
+    {
+      {
+        uint8_t buff[] = {0x74, 0x37, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+      {
+        uint8_t buff[] = {0x74, 0x33, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x36, 0x35, 0x35, 0x33, 0x35, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+    }
+    else
+    {
+      {
+        uint8_t buff[] = {0x74, 0x37, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+      {
+        uint8_t buff[] = {0x74, 0x33, 0x2E, 0x70, 0x63, 0x6F, 0x3D, 0x34, 0x33, 0x35, 0x37, 0xff, 0xff, 0xff};
+        nextion_exec_cmd(buff, sizeof(buff));
+      }
+    }
   }
 }
 
@@ -261,7 +353,7 @@ void relays_seconds_update()
   {
     relays.update = 0;
 
-    if (digitalRead(IN1) == 0)
+    if (gen_state)
     {
       if (++relays.counter >= 15)
       {
@@ -324,7 +416,7 @@ void relays_seconds_update()
 
 void relays_power_on()
 {
-  if (digitalRead(IN1) == 0)
+  if (gen_state)
   {
     if (relays.index == 0)
     {
@@ -380,7 +472,7 @@ void relays_debug()
 // -----------------------
 void oxygen_manager()
 {
-  if (digitalRead(IN1)) digitalWrite(RELAY5, HIGH);
+  if (!digitalRead(IN1)) digitalWrite(RELAY5, HIGH);
   else digitalWrite(RELAY5, LOW);
 }
 
@@ -389,8 +481,10 @@ void oxygen_manager()
 // -----------------------
 void input_manager()
 {
-  din1.state = digitalRead(IN1);
+  // get input
+  din1.state = !digitalRead(IN1);
 
+  // one shot flags
   if (din1.state_prev != din1.state)
   {
     din1.state_prev = din1.state;
@@ -406,6 +500,7 @@ void input_manager()
     }
   }
 
+  // delay generators start
   if (countdown_flag)
   {
     if (millis() - countdown_timer > 3000)
