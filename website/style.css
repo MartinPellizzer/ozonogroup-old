@@ -1,5 +1,38 @@
 :root {
     --hero-height: 100vh;
+    
+    --color-zinc-900: #18181b;
+    --color-zinc-800: #27272a;
+    --color-zinc-700: #3f3f46;
+    
+
+    --color-amber-50: #fffbeb;
+    --color-amber-100: #fef3c7;
+    --color-amber-200: #fde68a;
+    --color-amber-300: #fcd34d;
+    --color-amber-400: #fbbf24;
+    --color-amber-500: #f59e0b;
+
+    --clr-yellow-50: #fefce8;
+    --clr-yellow-100: #fef9c3;
+    --clr-yellow-200: #fef08a;
+    --clr-yellow-300: #fde047;
+    --clr-yellow-400: #facc15;
+    --clr-yellow-500: #eab308;
+    --clr-yellow-600: #ca8a04;
+    --clr-yellow-700: #a16207;
+    --clr-yellow-800: #854d0e;
+    --clr-yellow-900: #713f12;
+
+    --clr-bg-light: var(--clr-yellow-50);
+    
+    --color-primary: var(--color-amber-300);
+    --color-secondary: var(--color-amber-300);
+
+    --color-text-dark: var(--color-zinc-900);
+    --color-text-normal: var(--color-zinc-800);
+
+    --size-3xl: 9.6rem;
 }
 
 * {
@@ -15,76 +48,13 @@ html {
 }
 
 body {
-    font-family: 'Raleway', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 1.6rem;
 }
 
 .container-full {
     width: 100%;
     padding: 1.6rem 3.2rem;
-}
-
-.margin-right-small {
-    margin-right: 1.6rem !important;
-}
-
-/* ----- HEADER ----- */
-header {
-    height: 3.2rem;
-    display: flex;
-    justify-content: space-between;
-    background-color: #eecfb4;
-}
-
-header nav{
-    z-index: 1;
-}
-
-.logo {
-    color: #1c1917;
-    text-transform: uppercase;
-    font-size: 1.6rem;
-    font-weight: 700;
-    letter-spacing: 13px;
-}
-
-nav ul {
-    display: flex;
-    gap: 6.4rem;
-    text-transform: uppercase;
-    font-weight: 700;
-    font-size: 1.6rem;
-    letter-spacing: 1px;
-}
-
-nav ul li a{
-    color: #1c1917;
-}
-
-/* ----- MAIN ----- */
-main {
-}
-
-.banner {
-    height: var(--hero-height);
-    width: 50%;
-    position: absolute;
-    top: 0;
-    right: 0;
-    background-image: url('cow3.jpg');
-    background-size: cover;
-    background-position: center;
-    z-index: 0;
-}
-
-.hero {
-    /* margin-top: -3.2rem; */
-    height: calc(var(--hero-height) - 3.2rem);
-    background-color: #eecfb4;
-    /* background-image: url('cow3.jpg');
-    background-size: cover;
-    background-position: center; */
-    margin-bottom: 9.6rem;
 }
 
 .container-box {
@@ -94,23 +64,91 @@ main {
     padding: 0 3.2rem;
 }
 
+.margin-right-small {
+    margin-right: 1.6rem;
+}
+
+/* ------------------------------ */
+/* HEADER ----------------------- */
+/* ------------------------------ */
+
+header {
+    height: var(--size-3xl);
+    background-color: var(--clr-bg-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header nav{
+    z-index: 1;
+}
+
+.logo {
+    color: var(--color-text-dark);
+    text-transform: uppercase;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 13px;
+}
+
+nav ul {
+    display: flex;
+    align-items: center;
+    gap: 6.4rem;
+    text-transform: uppercase;
+    font-size: 1.6rem;
+    letter-spacing: 1px;
+}
+
+nav ul li a{
+    color: #fff;
+}
+
+/* ------------------------------ */
+/* MAIN ------------------------- */
+/* ------------------------------ */
+main {
+}
+
+.banner {
+    height: var(--hero-height);
+    width: 50%;
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0)), url('cheese1.jpg');
+    /* background-image: url('cheese1.jpg'); */
+    background-size: cover;
+    background-position: center;
+    z-index: 0;
+}
+
+.hero {
+    height: calc(var(--hero-height) - var(--size-3xl));
+    background-color: var(--clr-bg-light);
+    margin-bottom: var(--size-3xl);
+}
+
+
 .hero-layout {
     height: 100%;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 9.6rem;
+    gap: var(--size-3xl);
     align-items: center;
 }
 
 .hero h1 {
-    color: #1c1917;
-    font-size: 9.6rem;
+    color: var(--color-text-dark);
+    font-size: 6.4rem;
     margin-bottom: 1.6rem;
-    line-height: 1;
+    line-height: 1.1;
+    font-weight: 700;
 }
 
 .hero p {
-    color: #292524;
+    color: var(--color-text-normal);
     font-size: 2rem;
     margin-bottom: 3.2rem;
     line-height: 1.5;
@@ -119,50 +157,114 @@ main {
 .btn {
     display: inline-block;
     padding: 1.6rem 3.2rem;
-    /* border-radius: 50px; */
     text-transform: uppercase;
-    /* font-weight: 700; */
     letter-spacing: 1px;
 }
 
 .btn-primary {
-    color: #fff;
-    background-color: #aa6d44;
+    color: var(--color-text-dark);
+    background-color: var(--color-primary);
+    font-weight: bold;
 }
 .btn-secondary {
-    color: #aa6d44;
-    /* background-color: #fff; */
-    box-shadow: inset 0 0 0 1px #aa6d44;
+    color: var(--color-secondary);
+    box-shadow: inset 0 0 0 1px var(--color-secondary);
 }
 
+
+/* ------------------------------ */
+/* Services Section ------------- */
+/* ------------------------------ */
 .how-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 9.6rem;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--size-3xl);
     align-items: center;
 }
 
+/* .how-layout {
+    display: flex;
+    gap: var(--size-3xl);
+    align-items: center;
+} */
+
 .subheader {
-    color: #aa6d44;
+    color: var(--color-primary);
     font-size: 1.6rem;
     font-weight: 700;
     letter-spacing: 1px;
 }
 
 .how h2 {
-    color: #1c1917;
+    color: var(--color-text-dark);
     font-size: 4.8rem;
     margin-bottom: 4.8rem;
 }
 
 .how h3 {
-    color: #1c1917;
+    color: var(--color-text-dark);
     font-size: 3.2rem;
     margin-bottom: 1.6rem;
 }
 
 .how p {
-    color: #292524;
+    color: var(--color-text-dark);
     font-size: 1.8rem;
-    line-height: 1.5;
+    line-height: 1.5; 
+}
+
+img {
+    width: 100%;
+}
+
+.how-col {
+    flex-basis: 100%;
+}
+
+.how-col {
+
+}
+
+/* ------------------------------ */
+/* UTILITY ---------------------- */
+/* ------------------------------ */
+
+.uppercase {
+    text-transform: uppercase;
+}
+
+.capitalize {
+    text-transform: capitalize;
+}
+
+.ltr-spc-p1 {
+    letter-spacing: 1px;
+}
+.ltr-spc-p2 {
+    letter-spacing: 2px;
+}
+
+.size-3xl { font-size: var(--size-3xl); }
+
+.grid {
+    display: grid;
+    gap: var(--size-3xl);
+}
+
+.grid-2-col {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+img {
+    width: 100%;
+}
+
+.clr-amber-50 {color: var(--color-amber-50); }
+.clr-amber-100 {color: var(--color-amber-100); }
+.clr-amber-200 {color: var(--color-amber-200); }
+
+.step {
+    font-size: 19.2rem;
+    font-weight: 700;
+    color: var(--clr-yellow-100);
 }
