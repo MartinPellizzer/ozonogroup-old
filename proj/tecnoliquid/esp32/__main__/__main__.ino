@@ -12,13 +12,16 @@ uint32_t countdown_timer = 0;
 #define RELAY4 18
 
 #define RELAY5 19
+#define RELAY6 21
+#define RELAY7 22
+#define RELAY8 23
 
 #define IN1 32
 
 typedef struct core_t
 {
   int32_t millis_curr;
-
+ 
   int16_t seconds_prev;
   int16_t seconds_curr;
 } core_t;
@@ -472,8 +475,8 @@ void relays_debug()
 // -----------------------
 void oxygen_manager()
 {
-  if (!digitalRead(IN1)) digitalWrite(RELAY5, HIGH);
-  else digitalWrite(RELAY5, LOW);
+  if (!digitalRead(IN1)) digitalWrite(RELAY8, HIGH);
+  else digitalWrite(RELAY8, LOW);
 }
 
 // -----------------------
@@ -521,6 +524,9 @@ void setup()
   pinMode(RELAY3, OUTPUT);
   pinMode(RELAY4, OUTPUT);
   pinMode(RELAY5, OUTPUT);
+  pinMode(RELAY6, OUTPUT);
+  pinMode(RELAY7, OUTPUT);
+  pinMode(RELAY8, OUTPUT);
   pinMode(IN1, INPUT);
 
   Serial.begin(9600);
