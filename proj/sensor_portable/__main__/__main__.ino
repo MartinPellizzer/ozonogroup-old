@@ -8,22 +8,25 @@ uint32_t countdown_timer = 0;
 #define DIG_3 26
 #define DIG_4 27
 
-#define SEG_A 13
-#define SEG_B 14
-#define SEG_C 15
+//#define SEG_A 13
+//#define SEG_B 14
+//#define SEG_C 15
+//#define SEG_D 22
+//#define SEG_E 23
+//#define SEG_F 18
+//#define SEG_G 19
+//#define SEG_DP 21
 
 
-#define SEG_D 22
+#define SEG_A 18
+#define SEG_B 5
+#define SEG_C 4
+#define SEG_D 2
+
 #define SEG_E 23
-
-/*
-  #define SEG_D 16
-  #define SEG_E 17
-*/
-
-#define SEG_F 18
-#define SEG_G 19
-#define SEG_DP 21
+#define SEG_F 22
+#define SEG_G 21
+#define SEG_DP 19
 
 uint8_t sensor_buff[9] = {};
 uint8_t sensor_buff_index = 0;
@@ -223,6 +226,7 @@ void loop()
     */
   }
     seg_num_draw(sensor1.ppb_curr);
+//  seg_num_draw(demo_num);
 
 /*
   seg_num_draw(demo_num);
