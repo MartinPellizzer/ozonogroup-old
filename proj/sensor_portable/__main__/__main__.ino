@@ -1,28 +1,31 @@
 int8_t gen_state = 0;
+int delay_time = 4;
 
 int8_t countdown_flag = 1;
 uint32_t countdown_timer = 0;
 
-#define DIG_1 32
-#define DIG_2 25
-#define DIG_3 26
-#define DIG_4 27
+uint8_t digits[][8] = {
+  {1, 1, 1, 1, 1, 1, 0, 0}, // 0
+  {0, 1, 1, 0, 0, 0, 0, 0}, // 1
+  {1, 1, 0, 1, 1, 0, 1, 0}, // 2
+  {1, 1, 1, 1, 0, 0, 1, 0}, // 3
+  {0, 1, 1, 0, 0, 1, 1, 0}, // 4
+  {1, 0, 1, 1, 0, 1, 1, 0}, // 5
+  {1, 0, 1, 1, 1, 1, 1, 0}, // 6
+  {1, 1, 1, 0, 0, 0, 0, 0}, // 7
+  {1, 1, 1, 1, 1, 1, 1, 0}, // 8
+  {1, 1, 1, 1, 0, 1, 1, 0}, // 9
+};
 
-//#define SEG_A 13
-//#define SEG_B 14
-//#define SEG_C 15
-//#define SEG_D 22
-//#define SEG_E 23
-//#define SEG_F 18
-//#define SEG_G 19
-//#define SEG_DP 21
-
+#define DIG_1 27
+#define DIG_2 26
+#define DIG_3 25
+#define DIG_4 32
 
 #define SEG_A 18
 #define SEG_B 5
 #define SEG_C 4
 #define SEG_D 2
-
 #define SEG_E 23
 #define SEG_F 22
 #define SEG_G 21
@@ -92,14 +95,14 @@ void sensor1_read()
         }
       }
 
-      // DEBUG
-      /*
-        for (int i = 0; i < 9; i++)
-        {
+      // DEBUGs
+/*
+      for (int i = 0; i < 9; i++)
+      {
         Serial.println(sensor_buff[i]);
         sensor_buff[i] = 0;
-        }
-      */
+      }
+*/
 
       for (int i = 0; i < 9; i++)
       {
@@ -135,31 +138,11 @@ void setup()
   digitalWrite(SEG_G, LOW);
   digitalWrite(SEG_DP, LOW);
 
-  digitalWrite(DIG_1, HIGH);
-
-
   Serial.begin(9600);
   Serial2.begin(9600);
 
   Serial.println("Serial OK");
 }
-
-
-uint8_t digits[][8] = {
-  {1, 1, 1, 1, 1, 1, 0, 0},
-  {0, 1, 1, 0, 0, 0, 0, 0},
-  {1, 1, 0, 1, 1, 0, 1, 0},
-  {1, 1, 1, 1, 0, 0, 1, 0},
-  {0, 1, 1, 0, 0, 1, 1, 0},
-  {1, 0, 1, 1, 0, 1, 1, 0},
-
-  {1, 0, 1, 1, 1, 1, 1, 0},
-  {1, 1, 1, 0, 0, 0, 0, 0},
-  {1, 1, 1, 1, 1, 1, 1, 0},
-  {1, 1, 1, 1, 0, 1, 1, 0},
-};
-
-int delay_time = 4;
 
 void seg_num_draw(int16_t num)
 {
@@ -172,32 +155,32 @@ void seg_num_draw(int16_t num)
   digitalWrite(DIG_2, LOW);
   digitalWrite(DIG_3, LOW);
   digitalWrite(DIG_4, LOW);
-  seg_digit_draw(digit1);
+  seg_digit_draw(digit1, 1);
   delay(delay_time);
 
   digitalWrite(DIG_1, LOW);
   digitalWrite(DIG_2, HIGH);
   digitalWrite(DIG_3, LOW);
   digitalWrite(DIG_4, LOW);
-  seg_digit_draw(digit2);
+  seg_digit_draw(digit2, 0);
   delay(delay_time);
 
   digitalWrite(DIG_1, LOW);
   digitalWrite(DIG_2, LOW);
   digitalWrite(DIG_3, HIGH);
   digitalWrite(DIG_4, LOW);
-  seg_digit_draw(digit3);
+  seg_digit_draw(digit3, 0);
   delay(delay_time);
 
   digitalWrite(DIG_1, LOW);
   digitalWrite(DIG_2, LOW);
   digitalWrite(DIG_3, LOW);
   digitalWrite(DIG_4, HIGH);
-  seg_digit_draw(digit4);
+  seg_digit_draw(digit4, 0);
   delay(delay_time);
 }
 
-void seg_digit_draw(int8_t num) {
+void seg_digit_draw(int8_t num, int8_t dp) {
   digitalWrite(SEG_A, !digits[num][0]);
   digitalWrite(SEG_B, !digits[num][1]);
   digitalWrite(SEG_C, !digits[num][2]);
@@ -205,7 +188,7 @@ void seg_digit_draw(int8_t num) {
   digitalWrite(SEG_E, !digits[num][4]);
   digitalWrite(SEG_F, !digits[num][5]);
   digitalWrite(SEG_G, !digits[num][6]);
-  digitalWrite(SEG_DP, !digits[num][7]);
+  digitalWrite(SEG_DP, !dp);
 }
 
 int demo_num = 1234;
@@ -215,47 +198,6 @@ uint32_t demo_timer = 0;
 void loop()
 {
   sensor_manager();
-  if (sensor1.ppb_prev != sensor1.ppb_curr)
-  {
-    sensor1.ppb_prev = sensor1.ppb_curr;
-    /*
-    Serial.println(sensor1.ppb_curr);
-    print_digit(demo_counter);
-    demo_counter++;
-    demo_counter %= 10;
-    */
-  }
-    seg_num_draw(sensor1.ppb_curr);
+  seg_num_draw(sensor1.ppb_curr);
 //  seg_num_draw(demo_num);
-
-/*
-  seg_num_draw(demo_num);
-
-
-  if (millis() - demo_timer > 1000)
-  {
-    demo_timer = millis();
-    demo_num++;
-  }
-*/
-  /*
-    if (Serial2.available() > 0)
-    {
-    Serial.println(Serial2.read());
-    }*/
-
-  /*
-    digitalWrite(DIG_4, LOW);
-    digitalWrite(DIG_1, HIGH);
-    delay(delay_time);
-    digitalWrite(DIG_1, LOW);
-    digitalWrite(DIG_2, HIGH);
-    delay(delay_time);
-    digitalWrite(DIG_2, LOW);
-    digitalWrite(DIG_3, HIGH);
-    delay(delay_time);
-    digitalWrite(DIG_3, LOW);
-    digitalWrite(DIG_4, HIGH);
-    delay(delay_time);*/
-
 }
