@@ -71,6 +71,8 @@ void sensor1_read()
   {
     sensor_buffer_new_data = 1;
     uint8_t temp_val = Serial2.read();
+    
+    Serial.println(temp_val);
     if (sensor_buff_index < 9)
     {
       sensor_buff[sensor_buff_index] = temp_val;
@@ -95,14 +97,6 @@ void sensor1_read()
         }
       }
 
-      // DEBUGs
-/*
-      for (int i = 0; i < 9; i++)
-      {
-        Serial.println(sensor_buff[i]);
-        sensor_buff[i] = 0;
-      }
-*/
 
       for (int i = 0; i < 9; i++)
       {
@@ -146,36 +140,39 @@ void setup()
 
 void seg_num_draw(int16_t num)
 {
+  int don = LOW;
+  int doff = HIGH;
+  
   int digit1 = num % 10000 / 1000;
   int digit2 = num % 1000 / 100;
   int digit3 = num % 100 / 10;
   int digit4 = num % 10 / 1;
 
-  digitalWrite(DIG_1, HIGH);
-  digitalWrite(DIG_2, LOW);
-  digitalWrite(DIG_3, LOW);
-  digitalWrite(DIG_4, LOW);
+  digitalWrite(DIG_1, don);
+  digitalWrite(DIG_2, doff);
+  digitalWrite(DIG_3, doff);
+  digitalWrite(DIG_4, doff);
   seg_digit_draw(digit1, 1);
   delay(delay_time);
 
-  digitalWrite(DIG_1, LOW);
-  digitalWrite(DIG_2, HIGH);
-  digitalWrite(DIG_3, LOW);
-  digitalWrite(DIG_4, LOW);
+  digitalWrite(DIG_1, doff);
+  digitalWrite(DIG_2, don);
+  digitalWrite(DIG_3, doff);
+  digitalWrite(DIG_4, doff);
   seg_digit_draw(digit2, 0);
   delay(delay_time);
 
-  digitalWrite(DIG_1, LOW);
-  digitalWrite(DIG_2, LOW);
-  digitalWrite(DIG_3, HIGH);
-  digitalWrite(DIG_4, LOW);
+  digitalWrite(DIG_1, doff);
+  digitalWrite(DIG_2, doff);
+  digitalWrite(DIG_3, don);
+  digitalWrite(DIG_4, doff);
   seg_digit_draw(digit3, 0);
   delay(delay_time);
 
-  digitalWrite(DIG_1, LOW);
-  digitalWrite(DIG_2, LOW);
-  digitalWrite(DIG_3, LOW);
-  digitalWrite(DIG_4, HIGH);
+  digitalWrite(DIG_1, doff);
+  digitalWrite(DIG_2, doff);
+  digitalWrite(DIG_3, doff);
+  digitalWrite(DIG_4, don);
   seg_digit_draw(digit4, 0);
   delay(delay_time);
 }
@@ -192,12 +189,15 @@ void seg_digit_draw(int8_t num, int8_t dp) {
 }
 
 int demo_num = 1234;
-uint32_t demo_timer = 0;
+uint32_t demo_timer = 1234;
 
 
 void loop()
 {
   sensor_manager();
   seg_num_draw(sensor1.ppb_curr);
-//  seg_num_draw(demo_num);
+  //seg_num_draw(demo_num);
+  //demo_timer++;
+  //delay(1000);
+
 }
