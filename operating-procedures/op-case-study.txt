@@ -1,0 +1,6 @@
+1. titolo:
+	- come [nome azienda] ha risolto [problema] in [x tempo]
+2. testo:
+	- l'azienda [nome azienda] è una azienda [settore] che produce
+	  [prodotto].
+	- prima di incontrare ozonogroup, avevano il [problema].
