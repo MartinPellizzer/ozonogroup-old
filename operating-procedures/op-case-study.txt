@@ -3,8 +3,13 @@
 2. testo:
 	- l'azienda [nome azienda] è una azienda [settore] che produce
 	  [prodotto].
-	- prima di incontrare ozonogroup, avevano il [problema].
-
+	- come molte altre aziende, avevano [problema].
+	- per provare a risolverlo, usavano [sanificazione tradizionale].
+	- purtroppo però, non avevano [risultati] soddisfacenti.
+	- per questo motivo, hanno voluto provare l'ozono.
+	- dopo [x tempo] di trattamento, hanno avuto avuto [risultati].
+	- grazie a questi [risultati], hanno avuto questi [benefici/roi].
+	- in conclusione il cliente è [contento] e [consiglia l'ozono].
 
 
 esempio:
@@ -58,5 +63,5 @@ ha risparmi significativi sull'acqua che prima utilizzava per il lavaggio, e
 non deve più svuotare e riempire la cantina ogni volta che era necessario
 pulire a fondo.
 
-In conclusione, il cliente è entusiasta del risultato anche se confess che all'inizio era
+In conclusione, il cliente è entusiasta del risultato anche se confessa che all'inizio era
 molto scettico nei confronti della tecnologia di sanificazione ad ozono.
