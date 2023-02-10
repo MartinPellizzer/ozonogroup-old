@@ -1,0 +1,34 @@
+CHAMBER:
+	- length: 105mm
+	- material: pvc transparent
+	- diameter inner: 26mm
+	- diameter outer: 30mm
+	- filter: fan black sponge
+	- connector: pla 3d print
+	- id:
+
+SAWDUST:
+	- chamber half filled
+
+OZONE GENERATOR:
+	- model:
+	- grams:
+	- oxygen: 
+
+DATE:
+	- time start:
+	- time end:
+	- duration:
+
+PICTURES:
+	- id picture before:
+	- id picture after:
+
+HYPOTHESIS:
+
+CONTROL (A/B TEST):
+	- id: 
+
+ENVIRONMENT:
+	- temperature:
+	- humidity:
