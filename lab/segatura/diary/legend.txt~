@@ -7,13 +7,17 @@ CHAMBER:
 	- connector: pla 3d print
 	- id:
 
+TUBES:
+	- length chamber inlet tube: 1.80m
+	- length chamber outlet tube: 1.80m
+
 SAWDUST:
-	- chamber half filled
+	- chamber half filled: 1/4
 
 OZONE GENERATOR:
-	- model:
-	- grams:
-	- oxygen: 
+	- model: bigpower
+	- grams: 15g
+	- oxygen: ?
 
 DATE:
 	- time start:
